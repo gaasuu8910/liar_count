@@ -51,13 +51,21 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 .card.pick{cursor:pointer;animation:bob 1s ease-in-out infinite}
 .card.pick:hover{transform:translateY(-4px)}
 @keyframes bob{50%{transform:translateY(-4px)}}
+.phase{display:flex;flex-direction:column;align-items:center;gap:2px;min-height:4.2em}
+.phase.in{animation:phin .35s ease-out}
+@keyframes phin{from{opacity:0;transform:translateY(6px) scale(.96)}to{opacity:1;transform:none}}
+.ph-t{font-family:var(--display);font-size:clamp(28px,8vw,40px);color:var(--ver);line-height:1.15}
+.ph-s{font-size:13px;color:var(--bone);font-weight:700;max-width:24em;line-height:1.5}
+.zone{display:flex;flex-direction:column;align-items:center;gap:6px}
+.card.shuffling{animation:shuf .32s ease-in-out 5 alternate}
+@keyframes shuf{0%{transform:translateX(0) rotate(0)}50%{transform:translateX(14px) rotate(6deg)}100%{transform:translateX(-14px) rotate(-6deg)}}
 .card.discard{opacity:.22;transform:scale(.9)}
 .card.drawn{box-shadow:0 0 0 3px var(--gold);transform:translateY(-6px)}
 .card.flip{animation:flip .45s ease-out}
 @keyframes flip{0%{transform:rotateY(90deg)}100%{transform:none}}
 
 /* center */
-.center{min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center}
+.center{min-height:0;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center}
 .pot{font-size:13px;color:var(--mute)}
 .pot b{color:var(--gold);font-size:16px}
 .claimbox{display:flex;flex-direction:column;align-items:center;gap:2px}
@@ -116,6 +124,14 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 .rules label{display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:14px}
 .rules .btn{width:100%}
 
+@media (max-height:720px){
+  .reveal .card{--w:34px}
+  .ph-t{font-size:24px}
+  .ph-s{font-size:12px}
+  .phase{min-height:3.3em}
+  .reveal{gap:5px}
+  .verdict{font-size:18px}
+}
 @media (max-height:680px){
   .app{gap:7px}
   .card{--w:48px}
@@ -283,74 +299,123 @@ async function botTurn(p){
   return {t:'fold'};
 }
 
-/* ---------- liar resolution ---------- */
+/* ---------- liar resolution (slow, step by step) ---------- */
+const T=k=>k; // timing helper (ms)
+function phase(title,sub){
+  const ph=$('phase');ph.classList.remove('in');void ph.offsetWidth;ph.classList.add('in');
+  ph.innerHTML=`<div class="ph-t">${title}</div><div class="ph-s">${sub||''}</div>`;
+}
 async function resolveDoubt(ci,di){
   const C=PLAYERS[ci],D=PLAYERS[di];
-  log(`<b>${D.name}</b>：「ライアー！」<br>${D.name} は手札を伏せて混ぜる。${C.name} が1枚引いて自分だけで見て、残りは捨てる。`);
   const rv=$('reveal');rv.hidden=false;$('claimbox').hidden=true;
-  rv.innerHTML=`<div class="claimsub">${D.name} が伏せて混ぜた手札</div><div class="row" id="drow"></div><div class="claimsub" id="csub">${C.name} の手札＋引いた1枚 ／ 宣言 <b style="color:var(--ver)">${G.claim}</b></div><div class="row" id="crow"></div><div class="verdict" id="verdict"></div>`;
+  rv.innerHTML=`<div class="phase" id="phase"></div>
+    <div class="zone" id="dzone" hidden><div class="claimsub">${D.name} の手札（伏せて混ぜた）</div><div class="row" id="drow"></div></div>
+    <div class="zone" id="czone" hidden><div class="claimsub" id="csub">${C.name} の手札＋引いた1枚 ／ 宣言 <b style="color:var(--ver)">${G.claim}</b></div><div class="row" id="crow"></div></div>
+    <div class="verdict" id="verdict"></div>`;
+  setActions([waitMsg('…')]);
+  log('');
+  // 1. call
+  phase('ライアー！',`${D.name} が ${C.name} の「${G.claim} 以上」を嘘だと言った`);
+  await sleep(T(2000));
+  // 2. shuffle
   const drow=$('drow'),crow=$('crow');
   const pile=shuffle(D.hand.slice());
   const dcards=pile.map(v=>{const c=cardEl(v,{back:true});drow.appendChild(c);return c;});
+  $('dzone').hidden=false;
+  phase('シャッフル',`${D.name} が手札を伏せて混ぜる。${D.name} 本人にも、どれが引かれるかわからない`);
+  dcards.forEach((c,k)=>{c.style.animationDelay=(k*.08)+'s';c.classList.add('shuffling');});
+  await sleep(T(1900));
+  dcards.forEach(c=>c.classList.remove('shuffling'));
+  // 3. draw
   let idx;
   if(C.you){
+    phase('ドロー','1枚選んで引く');
     dcards.forEach(c=>c.classList.add('pick'));
     setActions([waitMsg('引く1枚をタップ')]);
     idx=await new Promise(r=>dcards.forEach((c,i)=>c.onclick=()=>r(i)));
     dcards.forEach(c=>{c.classList.remove('pick');c.onclick=null;});
   }else{
-    setActions([waitMsg(`${C.name} が引いています…`)]);
-    await sleep(900);idx=Math.floor(Math.random()*3);
+    phase('ドロー',`${C.name} が1枚引く`);
+    await sleep(T(1300));idx=Math.floor(Math.random()*3);
   }
   const drawn=pile[idx],total=sum(C.hand)+drawn,ok=total>=G.claim;
   dcards[idx].classList.add('drawn');
+  setActions([waitMsg('…')]);
+  await sleep(T(900));
+  // 4. discard
+  phase('捨て札','残りの2枚は、誰も見ずに捨てる');
   dcards.forEach((c,k)=>{if(k!==idx)c.classList.add('discard');});
-  const showClaimer=(open)=>{
-    crow.replaceChildren();
-    C.hand.forEach(v=>{const c=cardEl(v,{back:!open&&!C.you});if(open)c.classList.add('flip');crow.appendChild(c);});
-    const pl=document.createElement('span');pl.className='plus';pl.textContent='+';crow.appendChild(pl);
-    const dc=cardEl(drawn,{back:!open&&!C.you});dc.classList.add('drawn');if(open)dc.classList.add('flip');crow.appendChild(dc);
-  };
-  await sleep(400);
-  showClaimer(false);
-  if(C.you)$('csub').innerHTML=`あなたの合計 <b style="color:var(--bone)">${total}</b> ／ 宣言 <b style="color:var(--ver)">${G.claim}</b>　${ok?'届いている':'届いていない'}`;
-  // claimer: check or fold
+  await sleep(T(1500));
+  // 5. peek
+  $('czone').hidden=false;
+  C.hand.forEach(v=>crow.appendChild(cardEl(v,{back:!C.you})));
+  const pl=document.createElement('span');pl.className='plus';pl.textContent='+';crow.appendChild(pl);
+  const dc=cardEl(drawn,{back:!C.you});dc.classList.add('drawn');crow.appendChild(dc);
+  dcards[idx].classList.add('discard');
+  if(C.you){
+    phase('のぞき見','引いた札は、あなただけが見ている');
+    $('csub').innerHTML=`あなたの合計 <b style="color:var(--bone)">${total}</b> ／ 宣言 <b style="color:var(--ver)">${G.claim}</b>　<b style="color:${ok?'var(--good)':'var(--gold)'}">${ok?'届いている':'届いていない'}</b>`;
+  }else{
+    phase('のぞき見',`${C.name} だけが、引いた札を見ている…`);
+  }
+  // 6. check / fold
   let dec;
   if(C.you){
     dec=await choose([['フォールド','','fold'],['チェック','main','check']]);
   }else{
-    setActions([waitMsg(`${C.name} が引いた札を見ている…`)]);
-    await sleep(1200);dec=(ok||Math.random()<C.push)?'check':'fold';
+    await sleep(T(2300));dec=(ok||Math.random()<C.push)?'check':'fold';
   }
+  setActions([waitMsg('…')]);
   setAct(C,dec==='check'?'チェック':'フォールド',dec==='check'?'claim':'');
   if(dec==='fold'){
+    phase('フォールド',`${C.name} が諦めた。引いた札は見せない`);
+    await sleep(T(1800));
+    $('dzone').hidden=true;
     return {winner:di,msg:`${C.name} はフォールド。<b>${D.name}</b> の勝ち。`,hidden:true,total,ok,C};
   }
-  log(`${C.name}：「チェック」<br>${D.name} は受けるか、引くか。`);
-  // liar caller: call or drop
+  phase('チェック',`${C.name}：「届いている」`);
+  await sleep(T(1800));
+  // 7. call / drop
   let resp;
   if(D.you){
+    phase('受ける？ 引く？','受けて負けたら、ポットと同額を追加で払う');
     resp=await choose([['引く','','drop'],['受ける','gold','call']]);
   }else{
-    setActions([waitMsg(`${D.name} が迷っている…`)]);
-    await sleep(1300);
+    phase('受ける？ 引く？',`${D.name} が迷っている…`);
+    await sleep(T(2200));
     let pre=0;for(const c of D.hand){for(const k in P3)if(+k>=G.claim-c)pre+=P3[k]/3;}
     const post=pre/(pre+(1-pre)*D.q);
     resp=post<.5?'call':'drop';
   }
+  setActions([waitMsg('…')]);
   if(resp==='drop'){
     setAct(D,'引いた');
-    return {winner:ci,msg:`${D.name} は引いた。<b>${C.name}</b> がポットを取る。カードは誰にも見せない。`,hidden:true,total,ok,C};
+    phase('引く',`${D.name} が引いた。カードは誰にも見せない`);
+    await sleep(T(1800));
+    $('dzone').hidden=true;
+    return {winner:ci,msg:`${D.name} は引いた。<b>${C.name}</b> がポットを取る。`,hidden:true,total,ok,C};
   }
   setAct(D,'受ける！','doubt');
-  log(`${D.name}：「受ける」　公開！`);
-  await sleep(500);
-  showClaimer(true);
+  phase('受ける','オープン！');
+  await sleep(T(1400));
+  // 8. open one by one
   if(!C.you)$('csub').innerHTML=`${C.name} の手札＋引いた1枚 ／ 宣言 <b style="color:var(--ver)">${G.claim}</b>`;
-  await sleep(700);
-  const v=$('verdict');
+  const cs=[...crow.querySelectorAll('.card')];
+  const v=$('verdict');let run=0;
+  for(let k=0;k<3;k++){
+    const c=cardEl(C.hand[k]);c.classList.add('flip');cs[k].replaceWith(c);run+=C.hand[k];
+    v.className='verdict';v.textContent=`${run}`;
+    await sleep(T(800));
+  }
+  phase('最後の1枚',`あと ${G.claim-run} 以上で宣言成立`);
+  await sleep(T(1600));
+  const last=cardEl(drawn);last.classList.add('flip','drawn');cs[3].replaceWith(last);
+  await sleep(T(500));
   v.className='verdict '+(ok?'ok':'ng');
   v.textContent=`合計 ${total} ${ok?'≥':'<'} ${G.claim}　${ok?'宣言成立':'宣言失敗'}`;
+  phase(ok?'成立':'失敗',ok?`${C.name} の勝ち`:`${D.name} の勝ち`);
+  await sleep(T(1200));
+  $('dzone').hidden=true;
   const winner=ok?ci:di,loser=ok?D:C;
   const amt=Math.min(G.pot,loser.chips);
   let msg=`<b>${PLAYERS[winner].name}</b> の勝ち！ ${loser.name} はさらに ${amt} 枚払う。`;
