@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark only">
-<title>ライアーカウント｜テストプレイ</title>
+<title>ライアーカウント｜オンライン対戦</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap" rel="stylesheet">
@@ -145,29 +145,97 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
   .actions{min-height:48px}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* ---------- online ---------- */
+.code-chip{font-family:var(--display);font-size:12px;border:1.5px solid var(--line);border-radius:999px;padding:4px 10px;letter-spacing:.12em}
+.bots{grid-template-columns:repeat(var(--cols,3),1fr)}
+.seat.offline{opacity:.45}
+.seat.offline .sname::after{content:'（切断）';font-size:10px;color:var(--mute);font-weight:700}
+.seat.bust{opacity:.3}
+.many .seat{padding:6px 4px 5px;gap:3px}
+.many .mini .card{--w:18px}
+.many .sname{font-size:12px}
+.many .sact{font-size:10.5px}
+.me-status{font-size:12px;color:var(--mute)}
+
+.lobby{position:relative;z-index:1;min-height:100dvh;max-width:480px;margin:0 auto;padding:28px 18px calc(24px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:18px}
+.lobby[hidden]{display:none}
+.l-title{font-family:var(--display);font-size:clamp(38px,11vw,54px);line-height:1.1;margin:8px 0 0}
+.l-title span{color:var(--ver)}
+.l-lead{margin:0;color:var(--mute);font-size:14px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12px;color:var(--mute);font-weight:700}
+.field input{background:var(--panel);border:1.5px solid var(--line);border-radius:12px;padding:14px;font:inherit;font-size:17px;color:var(--bone);font-weight:700}
+.field input:focus{outline:none;border-color:var(--gold)}
+.field input.codein{font-family:var(--display);letter-spacing:.3em;text-transform:uppercase;font-size:22px;text-align:center}
+.lrow{display:flex;gap:10px}
+.lrow>*{flex:1}
+.or{display:flex;align-items:center;gap:10px;color:var(--mute);font-size:12px}
+.or::before,.or::after{content:'';flex:1;height:1px;background:var(--line)}
+.lerr{color:var(--ver);font-weight:700;font-size:14px;min-height:1.4em}
+.roomcode{font-family:var(--display);font-size:56px;letter-spacing:.18em;text-align:center;color:var(--gold);line-height:1}
+.roomlabel{text-align:center;font-size:12px;color:var(--mute)}
+.plist{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.plist li{background:var(--panel);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;font-weight:700}
+.plist li small{color:var(--mute);font-weight:500}
+.lnote{font-size:12px;color:var(--mute);line-height:1.6;margin:0}
+.lnote a{color:var(--gold)}
+.big-result{font-family:var(--display);font-size:clamp(30px,9vw,44px);color:var(--gold);line-height:1.2}
+.banner{position:fixed;left:50%;top:12px;transform:translateX(-50%);background:var(--ver);color:#fff;font-weight:900;padding:10px 16px;border-radius:12px;z-index:9;font-size:14px;max-width:92vw;text-align:center}
+.banner[hidden]{display:none}
 </style>
 </head>
 <body>
-<div class="app">
+<div class="banner" id="banner" hidden></div>
+
+<!-- ============ LOBBY ============ -->
+<section class="lobby" id="lobby">
+  <div>
+    <h1 class="l-title">ライアー<span>カウント</span></h1>
+    <p class="l-lead">嘘で降ろせ。見破られたら、運と度胸に賭けろ。</p>
+  </div>
+
+  <div id="l-start">
+    <div class="field"><label for="nameIn">あなたの名前</label><input id="nameIn" maxlength="10" autocomplete="nickname" placeholder="例：たろう"></div>
+    <div style="height:14px"></div>
+    <button class="btn main" id="createBtn" style="width:100%">部屋を作る</button>
+    <div style="height:14px"></div>
+    <div class="or">または</div>
+    <div style="height:14px"></div>
+    <div class="lrow">
+      <div class="field"><label for="codeIn">部屋コード</label><input id="codeIn" class="codein" maxlength="4" autocomplete="off" placeholder="ABCD"></div>
+    </div>
+    <div style="height:10px"></div>
+    <button class="btn gold" id="joinBtn" style="width:100%">部屋に入る</button>
+    <p class="lerr" id="lerr"></p>
+    <p class="lnote">2〜6人で遊べます。部屋を作ったら、コードかリンクを友達に送ってください。<br>ひとりで練習するなら <a href="solo.html">ボット対戦</a>。　<a href="#" id="lobbyRules">ルールを見る</a></p>
+  </div>
+
+  <div id="l-room" hidden>
+    <div class="roomlabel">部屋コード</div>
+    <div class="roomcode" id="roomCode">----</div>
+    <div style="height:12px"></div>
+    <button class="btn" id="shareBtn" style="width:100%">招待リンクを送る</button>
+    <div style="height:16px"></div>
+    <ul class="plist" id="plist"></ul>
+    <div style="height:16px"></div>
+    <button class="btn main" id="startBtn" style="width:100%" hidden>ゲーム開始</button>
+    <p class="lnote" id="roomNote"></p>
+    <p class="lerr" id="lerr2"></p>
+  </div>
+</section>
+
+<!-- ============ GAME ============ -->
+<div class="app" id="game" hidden>
   <header class="top">
     <div class="logo">ライアー<span>カウント</span></div>
-    <div class="top-r"><span class="round" id="round"></span><button class="ghost" id="openRules">ルール</button></div>
+    <div class="top-r"><span class="round" id="round"></span><span class="code-chip" id="codeChip"></span><button class="ghost" id="openRules">ルール</button></div>
   </header>
   <section class="bots" id="bots"></section>
-  <main class="center" id="center">
-    <div class="pot">ポット <b id="pot">0</b></div>
-    <div class="claimbox" id="claimbox">
-      <div class="claimwho" id="claimwho"></div>
-      <div class="claimnum empty" id="claimnum">—</div>
-      <div class="claimsub" id="claimsub">手札3枚＋あと1枚の合計</div>
-    </div>
-    <div class="reveal" id="reveal" hidden></div>
-    <div class="log" id="log" aria-live="polite"></div>
-  </main>
+  <main class="center" id="center"></main>
   <section class="me" id="me">
     <div class="hand" id="myhand"></div>
     <div class="me-info">
-      <div class="me-name">あなた</div>
+      <div class="me-name" id="myname">あなた</div>
       <div class="me-sum">手札の合計 <b id="mysum">0</b></div>
       <div class="me-hint">「あと1枚」の平均はだいたい 4。×2は合計を2倍</div>
       <div class="me-chips" id="mychips"></div>
@@ -176,7 +244,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
   <footer class="actions" id="actions"></footer>
 </div>
 
-<div class="ov" id="ov">
+<div class="ov" id="ov" hidden>
   <div class="rules">
     <h2>ライアー<span>カウント</span></h2>
     <p class="lead">嘘で降ろせ。見破られたら、運と度胸に賭けろ。</p>
@@ -187,337 +255,474 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
       <li><div>ライアーと言った人は手札を伏せて混ぜ、宣言者が1枚引いて<b>自分だけで見る</b>。残りの2枚は見ずに捨てる。届いたと言い張るなら「チェック」、諦めるなら「フォールド」。</div></li>
       <li><div>チェックされたら、ライアーと言った人は「<b>受ける</b>」か「<b>引く</b>」。受けたら公開し、手札3枚＋引いた1枚が宣言以上なら宣言者の勝ち。負けた側は追加で払う。<b>ライアーが外れたら、宣言を超えていた分</b>を、宣言者が届かなかったら、ポットと同額を。引いたら宣言者がポットを取り、カードは誰にも見せない。</div></li>
     </ol>
-    <p class="deck">カード：1〜9が各4枚、「−5」が2枚、「×2」が2枚（×2は他の札の合計を2倍、2枚なら4倍）。各自3枚、チップ10枚。毎ラウンド参加料1枚。ライアーと言うのは無料。<br>高い札を持ったままライアーと言うと、その札が嘘つきを助けてしまう。</p>
-    <label><input type="checkbox" id="practice"> 練習モード：ラウンド後に全員の手札を見る</label>
-    <button class="btn main" id="closeRules">はじめる</button>
+    <p class="deck">カード：1〜9が各4枚、「−5」が2枚、「×2」が2枚（×2は他の札の合計を2倍、2枚なら4倍）。各自3枚、チップ10枚。毎ラウンド参加料1枚。ライアーと言うのは無料。チップが尽きたら脱落、最後の1人が勝ち。</p>
+    <button class="btn main" id="closeRules" style="width:100%">閉じる</button>
   </div>
 </div>
 
+<script src="vendor/peerjs.min.js"></script>
 <script>
+/* =========================================================
+   common
+   ========================================================= */
 const $=id=>document.getElementById(id);
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const Q=new URLSearchParams(location.search);
 const DECK=[];for(let v=1;v<=9;v++)for(let k=0;k<4;k++)DECK.push(v);DECK.push(-5,-5,'x2','x2');
-// value of a set of cards: sum of numbers, doubled for each ×2
 const val=cs=>cs.filter(c=>c!=='x2').reduce((a,b)=>a+b,0)*2**cs.filter(c=>c==='x2').length;
 const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
-const sum=a=>a.reduce((x,y)=>x+y,0);
-// distribution of a random 3-card hand total
-const SAMP=[];for(let i=0;i<400;i++){const d=shuffle(DECK.slice());SAMP.push(d.slice(0,3));}
-// chance a claimer reaches C if he draws from `hand`
-function pReach(C,hand){let n=0;for(const x of SAMP)for(const c of hand)if(val([...x,c])>=C)n++;return n/(SAMP.length*hand.length);}
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const SPEED=Math.max(1,+Q.get('speed')||1); // test hook
+const START=10,BUZZ_MS=4000/SPEED,PREFIX='liarcount-v1-';
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+function banner(t,ms=3500){const b=$('banner');b.textContent=t;b.hidden=false;clearTimeout(banner.t);if(ms)banner.t=setTimeout(()=>b.hidden=true,ms);}
 
-const PLAYERS=[
-  {name:'あなた',you:true},
-  {name:'ミナト',style:'慎重派',bluff:2,doubt:.38,push:.1,q:.3,jump:.5},
-  {name:'レックス',style:'大胆',bluff:7,doubt:.28,push:.45,q:.25,jump:.4},
-  {name:'サラ',style:'曲者',bluff:5,doubt:.5,push:.3,q:.5,jump:.4},
-];
-const START=10;
-const G={round:0,start:0,pot:0,claim:null,claimer:null,practice:false};
+/* =========================================================
+   transport (PeerJS / WebRTC). The host's browser runs the game.
+   ========================================================= */
+function peerOpts(){
+  const s=Q.get('signal');
+  if(s){const [h,p]=s.split(':');return {host:h,port:+p||9000,path:'/',secure:false,debug:0,config:{iceServers:[]}};}
+  return {debug:0};
+}
+function makeCode(){const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let c='';for(let i=0;i<4;i++)c+=A[Math.floor(Math.random()*A.length)];return c;}
 
-/* ---------- render ---------- */
-function cardEl(v,{back=false,w}={}){
+/* =========================================================
+   HOST ENGINE (authoritative state; sends each player only what they may see)
+   ========================================================= */
+const H={code:null,peer:null,conns:{},players:[],phase:'lobby',round:0,start:0,pot:0,claim:null,claimer:null,turn:null,caller:null,
+  pile:null,pick:null,drawn:null,total:null,ok:null,reveal:false,result:null,log:'',buzzEnd:0,timer:null,seq:0,winner:null};
+
+function hostOpen(name){
+  const code=makeCode();
+  const peer=new Peer(PREFIX+code,peerOpts());
+  H.peer=peer;
+  peer.on('open',()=>{
+    H.code=code;
+    H.players=[{id:'HOST',token:'HOST',name,chips:START,connected:true}];
+    ME.mode='host';ME.code=code;
+    history.replaceState(null,'',location.pathname+'?room='+code+(Q.get('signal')?'&signal='+Q.get('signal'):''));
+    pushViews();
+  });
+  peer.on('error',e=>{
+    if(e.type==='unavailable-id'){peer.destroy();hostOpen(name);return;}
+    lobbyErr('接続エラー：'+(e.type||e.message||e));
+  });
+  peer.on('disconnected',()=>{try{peer.reconnect()}catch(e){}});
+  peer.on('connection',conn=>{
+    conn.on('open',()=>{H.conns[conn.peer]=conn;});
+    conn.on('data',d=>hostRecv(conn.peer,d));
+    conn.on('close',()=>{delete H.conns[conn.peer];hostLeave(conn.peer);});
+    conn.on('error',()=>{});
+  });
+}
+function hostSend(id,m){
+  if(id==='HOST'){if(m.t==='view')clientView(m.v);return;}
+  const c=H.conns[id];if(c&&c.open){try{c.send(m)}catch(e){}}
+}
+function hostRecv(id,m){
+  if(!m||typeof m!=='object')return;
+  if(m.t==='hello'){
+    const name=String(m.name||'').trim().slice(0,10)||'名無し';
+    const token=String(m.token||'');
+    let p=H.players.find(q=>q.token&&q.token===token);
+    if(p){p.id=id;p.connected=true;pushViews();return;}
+    if(H.phase!=='lobby'){hostSend(id,{t:'error',msg:'ゲームはもう始まっています'});return;}
+    if(H.players.length>=6){hostSend(id,{t:'error',msg:'満席です（6人まで）'});return;}
+    let nm=name,n=2;while(H.players.some(q=>q.name===nm))nm=name+n++;
+    H.players.push({id,token,name:nm,chips:START,connected:true});
+    pushViews();
+  }else if(m.t==='act'){
+    hostAct(id,m.a||{});
+  }
+}
+function hostLeave(id){
+  const p=H.players.find(q=>q.id===id);if(!p)return;
+  if(H.phase==='lobby'){H.players=H.players.filter(q=>q!==p);}
+  else p.connected=false;
+  pushViews();autoAway();
+}
+const inRound=()=>H.players.filter(p=>!p.bust&&!p.folded);
+const alive=()=>H.players.filter(p=>!p.bust);
+function view(k){
+  const showClaimer=H.phase==='open'||(H.phase==='result'&&H.reveal);
+  const seeDraw=H.pick!=null&&(k===H.claimer||showClaimer);
+  return {
+    phase:H.phase,round:H.round,pot:H.pot,claim:H.claim,claimer:H.claimer,turn:H.turn,caller:H.caller,you:k,code:H.code,
+    isHost:H.players[k].id==='HOST',
+    players:H.players.map((p,j)=>({name:p.name,chips:p.chips,bust:!!p.bust,folded:!!p.folded,act:p.act||'',connected:!!p.connected,ready:!!p.ready,
+      hand:(p.hand&&(j===k||(showClaimer&&j===H.claimer)))?p.hand:null})),
+    buzzLeft:Math.max(0,H.buzzEnd-Date.now()),
+    pick:H.pick,drawn:seeDraw?H.drawn:null,total:seeDraw?H.total:null,ok:seeDraw?H.ok:null,
+    log:H.log,result:H.result,winner:H.winner,reveal:H.reveal,seq:H.seq
+  };
+}
+function pushViews(){H.seq++;H.players.forEach((p,k)=>hostSend(p.id,{t:'view',v:view(k)}));}
+// phase timer: fires only if the game is still in the same phase of the same round
+function phaseTimer(ms,fn){const ph=H.phase,r=H.round;clearTimeout(H.timer);H.timer=setTimeout(()=>{if(H.phase===ph&&H.round===r)fn();},ms/SPEED);}
+
+function startGame(){
+  H.players.forEach(p=>{p.chips=START;p.bust=false;});
+  H.round=0;H.winner=null;newRound();
+}
+function newRound(){
+  H.players.forEach(p=>{if(p.chips<=0)p.bust=true;});
+  const al=alive();
+  if(al.length<=1){H.phase='gameover';H.winner=al[0]?al[0].name:null;H.log='';pushViews();return;}
+  H.round++;H.pot=0;H.claim=null;H.claimer=null;H.caller=null;H.pile=null;H.pick=null;H.drawn=null;H.total=null;H.ok=null;H.reveal=false;H.result=null;
+  const d=shuffle(DECK.slice());
+  H.players.forEach(p=>{p.folded=!!p.bust;p.act=p.bust?'脱落':'';p.ready=false;p.hand=p.bust?null:[d.pop(),d.pop(),d.pop()];if(!p.bust){p.chips--;H.pot++;}});
+  let k=H.start%H.players.length;while(H.players[k].bust)k=(k+1)%H.players.length;H.start=k+1;
+  H.turn=k;H.phase='claim';H.log=`ROUND ${H.round}。${H.players[k].name} から。`;
+  pushViews();autoAway();
+}
+function hostAct(id,a){
+  const k=H.players.findIndex(p=>p.id===id);if(k<0)return;
+  const p=H.players[k];
+  switch(H.phase){
+    case 'lobby':
+      if(a.t==='start'&&id==='HOST'&&H.players.length>=2)startGame();
+      break;
+    case 'claim':
+      if(k!==H.turn)return;
+      if(a.t==='claim'){
+        const min=H.claim==null?1:H.claim+1,v=Math.floor(+a.v);
+        if(!(v>=min&&v<=200))return;
+        const cost=H.claim==null?Math.min(1,p.chips):v-H.claim;
+        if(cost>p.chips)return;
+        p.chips-=cost;H.pot+=cost;H.claim=v;H.claimer=k;p.act=`宣言 ${v}（${cost}枚）`;
+        H.log=`${p.name}：「${v} 以上」　チップ ${cost} 枚`;
+        H.phase='buzz';H.buzzEnd=Date.now()+BUZZ_MS;pushViews();
+        phaseTimer(BUZZ_MS+250,()=>advance());
+      }else if(a.t==='fold'&&H.claim!=null){
+        p.folded=true;p.act='降りた';H.log=`${p.name} は降りた。`;advance();
+      }
+      break;
+    case 'buzz':
+      if(a.t==='liar'&&k!==H.claimer&&!p.folded&&!p.bust){clearTimeout(H.timer);H.caller=k;p.act='ライアー！';liarStart();}
+      break;
+    case 'draw':
+      if(a.t==='pick'&&k===H.claimer&&[0,1,2].includes(a.i))doPick(a.i);
+      break;
+    case 'peek':
+      if(a.t==='decide'&&k===H.claimer&&(a.v==='check'||a.v==='fold'))doDecide(a.v);
+      break;
+    case 'respond':
+      if(a.t==='respond'&&k===H.caller&&(a.v==='call'||a.v==='drop'))doRespond(a.v);
+      break;
+    case 'result':
+      if(a.t==='ready'){p.ready=true;pushViews();checkReady();}
+      break;
+    case 'gameover':
+      if(a.t==='again'&&id==='HOST')startGame();
+      break;
+  }
+}
+function advance(){
+  const ir=inRound();
+  if(ir.length===1)return endRound(H.players.indexOf(ir[0]),`${ir[0].name} 以外が全員降りた。`);
+  let k=H.turn;
+  for(let n=0;n<H.players.length;n++){k=(k+1)%H.players.length;const q=H.players[k];if(!q.folded&&!q.bust)break;}
+  if(k===H.claimer)return endRound(k,`誰もライアーと言わなかった。<b>${esc(H.players[k].name)}</b> が手札を見せずに総取り。`);
+  H.turn=k;H.phase='claim';pushViews();autoAway();
+}
+function setPhase(ph,ms,next){H.phase=ph;pushViews();phaseTimer(ms,next);}
+function liarStart(){
+  const C=H.players[H.claimer],D=H.players[H.caller];
+  H.log=`${D.name}：「ライアー！」`;
+  setPhase('liar',2200,()=>{
+    H.pile=shuffle(D.hand.slice());
+    setPhase('shuffle',2200,()=>{H.phase='draw';pushViews();autoAway();});
+  });
+}
+function doPick(i){
+  const C=H.players[H.claimer];
+  H.pick=i;H.drawn=H.pile[i];H.total=val([...C.hand,H.drawn]);H.ok=H.total>=H.claim;
+  setPhase('discard',1700,()=>{H.phase='peek';pushViews();autoAway();});
+}
+function doDecide(v){
+  const C=H.players[H.claimer],D=H.players[H.caller];
+  C.act=v==='check'?'チェック':'フォールド';
+  if(v==='fold'){
+    setPhase('cfold',2000,()=>endRound(H.caller,`${esc(C.name)} はフォールド。<b>${esc(D.name)}</b> の勝ち。`));
+  }else{
+    setPhase('checked',2000,()=>{H.phase='respond';pushViews();autoAway();});
+  }
+}
+function doRespond(v){
+  const C=H.players[H.claimer],D=H.players[H.caller];
+  D.act=v==='call'?'受ける！':'引いた';
+  if(v==='drop'){
+    setPhase('dropped',2000,()=>endRound(H.claimer,`${esc(D.name)} は引いた。<b>${esc(C.name)}</b> がポットを取る。`));
+    return;
+  }
+  H.reveal=true;
+  setPhase('open',7200,()=>{
+    const ok=H.ok,w=ok?H.claimer:H.caller,loser=ok?D:C;
+    const want=ok?H.total-H.claim:H.pot,amt=Math.min(want,loser.chips);
+    let msg=ok
+      ?`<b>${esc(C.name)}</b> の勝ち！ ${esc(D.name)} は超過分 ${want} 枚を払う${amt<want?`（手持ち ${amt} 枚まで）`:''}。`
+      :`<b>${esc(D.name)}</b> の勝ち！ ${esc(C.name)} はポットと同額 ${amt} 枚を払う。`;
+    if(ok&&val([...C.hand,4])<H.claim)msg+=`<br>${esc(D.name)} の札が嘘を本当にした。`;
+    endRound(w,msg,{from:loser,to:H.players[w],amt});
+  });
+}
+function endRound(w,msg,pay){
+  const gain=H.pot;H.players[w].chips+=H.pot;H.pot=0;
+  let extra=0;if(pay){pay.from.chips-=pay.amt;pay.to.chips+=pay.amt;extra=pay.amt;}
+  H.result={msg:msg+`（+${gain+extra}）`,winner:w};
+  H.phase='result';H.players.forEach(p=>p.ready=false);
+  pushViews();autoAway();
+}
+function checkReady(){
+  if(H.phase!=='result')return;
+  if(H.players.every(p=>p.ready||!p.connected))newRound();
+}
+// keep the game moving when someone has disconnected
+function autoAway(){
+  const ph=H.phase,r=H.round,t=H.turn;clearTimeout(H.atimer);
+  H.atimer=setTimeout(()=>{
+    if(H.phase!==ph||H.round!==r||H.turn!==t)return;
+    const T=H.players[H.turn],C=H.players[H.claimer],D=H.players[H.caller];
+    if(H.phase==='claim'&&T&&!T.connected){
+      if(H.claim==null)hostAct(T.id,{t:'claim',v:1});else hostAct(T.id,{t:'fold'});
+    }else if(H.phase==='draw'&&C&&!C.connected)doPick(Math.floor(Math.random()*3));
+    else if(H.phase==='peek'&&C&&!C.connected)doDecide(H.ok?'check':'fold');
+    else if(H.phase==='respond'&&D&&!D.connected)doRespond('drop');
+    else if(H.phase==='result')checkReady();
+  },1200/SPEED);
+}
+
+/* =========================================================
+   CLIENT (also used by the host for its own seat)
+   ========================================================= */
+const ME={mode:null,conn:null,peer:null,code:null,v:null,prev:null,openAnim:null};
+function act(a){
+  if(ME.mode==='host')hostAct('HOST',a);
+  else if(ME.conn&&ME.conn.open)ME.conn.send({t:'act',a});
+}
+function clientJoin(name,code){
+  code=code.toUpperCase();
+  const tk='lc-token-'+code;let token=store.get(tk);if(!token){token=Math.random().toString(36).slice(2)+Date.now().toString(36);store.set(tk,token);}
+  const peer=new Peer(peerOpts());ME.peer=peer;
+  lobbyErr('接続中…');
+  peer.on('open',()=>{
+    const conn=peer.connect(PREFIX+code,{reliable:true});ME.conn=conn;
+    conn.on('open',()=>{ME.mode='client';ME.code=code;lobbyErr('');conn.send({t:'hello',name,token});
+      history.replaceState(null,'',location.pathname+'?room='+code+(Q.get('signal')?'&signal='+Q.get('signal'):''));});
+    conn.on('data',m=>{
+      if(m.t==='view')clientView(m.v);
+      else if(m.t==='error'){lobbyErr(m.msg);try{peer.destroy()}catch(e){}}
+    });
+    conn.on('close',()=>{banner('ホストとの接続が切れました',0);});
+  });
+  peer.on('error',e=>{
+    if(e.type==='peer-unavailable')lobbyErr('その部屋は見つかりません。コードを確認してください');
+    else lobbyErr('接続エラー：'+(e.type||e.message||e));
+  });
+  peer.on('disconnected',()=>{try{peer.reconnect()}catch(e){}});
+}
+function lobbyErr(t){$('lerr').textContent=t;$('lerr2').textContent=t;}
+
+function clientView(v){
+  ME.prev=ME.v;ME.v=v;
+  if(v.phase==='lobby')renderLobby(v);else renderGame(v);
+}
+
+/* ---------- lobby render ---------- */
+function renderLobby(v){
+  $('lobby').hidden=false;$('game').hidden=true;
+  $('l-start').hidden=true;$('l-room').hidden=false;
+  $('roomCode').textContent=v.code;
+  $('plist').innerHTML=v.players.map((p,i)=>`<li><span>${esc(p.name)}${i===v.you?'（あなた）':''}</span><small>${i===0?'ホスト':''}</small></li>`).join('');
+  $('startBtn').hidden=!v.isHost;
+  $('startBtn').disabled=v.players.length<2;
+  $('roomNote').textContent=v.isHost?(v.players.length<2?'あと1人以上集まったら開始できます。':`${v.players.length}人で開始できます（最大6人）。`):'ホストが開始するのを待っています…';
+}
+
+/* ---------- game render helpers ---------- */
+function cardEl(v,{back=false}={}){
   const c=document.createElement('div');
   c.className='card'+(back?' back':v==='x2'?' dbl':v<0?' curse':'');
   c.textContent=back?'':(v==='x2'?'×2':v);
-  if(w)c.style.setProperty('--w',w+'px');
   return c;
 }
-function buildSeats(){
-  PLAYERS.forEach((p,i)=>{
-    p.chips=START;
-    if(p.you){p.el=$('me');p.chipsEl=$('mychips');return;}
-    const s=document.createElement('div');s.className='seat';
-    s.innerHTML=`<div class="sname">${p.name}</div><div class="sstyle">${p.style}</div><div class="mini"></div><div class="schips"></div><div class="sact"></div>`;
-    $('bots').appendChild(s);
-    p.el=s;p.mini=s.querySelector('.mini');p.chipsEl=s.querySelector('.schips');p.act=s.querySelector('.sact');
-  });
-}
-function render(turn){
-  PLAYERS.forEach((p,i)=>{
-    p.chipsEl.textContent=`チップ ${p.chips}`;
-    p.el.classList.toggle('turn',turn===i);
-    p.el.classList.toggle('out',!!p.out&&!p.you);
-    p.el.classList.toggle('claimer',G.claimer===i);
-  });
-  $('pot').textContent=G.pot;
-  $('round').textContent=`ROUND ${G.round}`;
-}
-function drawMini(p,show){
-  if(p.you){
-    $('myhand').replaceChildren(...p.hand.map(v=>cardEl(v)));
-    $('mysum').textContent=val(p.hand);
-    return;
-  }
-  p.mini.replaceChildren(...p.hand.map(v=>cardEl(v,{back:!show})));
-}
-function setAct(p,text,cls=''){if(p.you)return;p.act.textContent=text;p.act.className='sact '+cls;}
-function setClaim(){
-  const n=$('claimnum');
-  if(G.claim==null){n.textContent='—';n.classList.add('empty');$('claimwho').textContent='まだ宣言なし';return;}
-  n.textContent=G.claim;n.classList.remove('empty','bump');void n.offsetWidth;n.classList.add('bump');
-  $('claimwho').textContent=`${PLAYERS[G.claimer].name} の宣言`;
-}
-const log=h=>{$('log').innerHTML=h;};
-
-/* ---------- action bar ---------- */
-function setActions(nodes){$('actions').replaceChildren(...nodes);}
 function btn(label,cls,fn,dis){const b=document.createElement('button');b.className='btn '+(cls||'');b.textContent=label;b.disabled=!!dis;b.onclick=fn;return b;}
 function waitMsg(t){const d=document.createElement('div');d.className='wait';d.textContent=t;return d;}
-function tap(label,cls='main'){return new Promise(r=>setActions([btn(label,cls,()=>r())]));}
-function choose(opts){return new Promise(r=>setActions(opts.map(([l,c,v])=>btn(l,c,()=>r(v)))));}
+function drain(node,ms){node.classList.add('buzzing');const bar=document.createElement('i');bar.className='buzzbar';bar.style.animationDuration=ms+'ms';node.appendChild(bar);return node;}
+function setActions(nodes){$('actions').replaceChildren(...nodes);}
+const nm=(v,i)=>esc(v.players[i]?v.players[i].name:'');
 
-function userTurn(me){
-  return new Promise(res=>{
-    const min=G.claim==null?1:G.claim+1;
-    const cost=v=>G.claim==null?1:v-G.claim;
-    const max=G.claim==null?60:G.claim+me.chips;
-    let v0=Math.max(min,G.claim==null?val([...me.hand,4]):min);
-    const st=document.createElement('div');st.className='stepper';
-    const out=document.createElement('output');
-    const minus=document.createElement('button');minus.textContent='−';minus.setAttribute('aria-label','減らす');
-    const plus=document.createElement('button');plus.textContent='+';plus.setAttribute('aria-label','増やす');
-    v0=Math.min(v0,Math.max(min,max));
-    const cb=btn('','main',()=>res({t:'claim',v:v0}));
-    const upd=()=>{out.textContent=v0;minus.disabled=v0<=min;plus.disabled=v0>=max;cb.textContent=`宣言（${cost(v0)}枚）`;cb.disabled=me.chips<cost(v0);};
-    minus.onclick=()=>{if(v0>min){v0--;upd();}};plus.onclick=()=>{if(v0<max){v0++;upd();}};
-    st.append(minus,out,plus);upd();
-    const items=[st,cb];
-    if(G.claim!=null)items.push(btn('降りる','',()=>res({t:'fold'})));
-    setActions(items);
-  });
+function renderGame(v){
+  $('lobby').hidden=true;$('game').hidden=false;
+  const P=v.players,you=P[v.you],prev=ME.prev,phaseChanged=!prev||prev.phase!==v.phase||prev.round!==v.round;
+  $('round').textContent=`ROUND ${v.round}`;$('codeChip').textContent=v.code;
+  // opponents in seat order after you
+  const order=[];for(let n=1;n<P.length;n++)order.push((v.you+n)%P.length);
+  const bots=$('bots');bots.style.setProperty('--cols',Math.min(3,order.length));bots.classList.toggle('many',order.length>3);
+  bots.replaceChildren(...order.map(j=>{
+    const p=P[j],s=document.createElement('div');
+    s.className='seat'+((v.phase==='claim'&&v.turn===j)?' turn':'')+(v.claimer===j&&v.claim!=null?' claimer':'')+(p.folded&&!p.bust?' out':'')+(p.connected?'':' offline')+(p.bust?' bust':'');
+    s.innerHTML=`<div class="sname">${esc(p.name)}</div><div class="mini"></div><div class="schips">チップ ${p.chips}</div><div class="sact${/ライアー|受ける/.test(p.act)?' doubt':/宣言|チェック/.test(p.act)?' claim':''}">${esc(v.phase==='result'&&p.ready?'OK':p.act)}</div>`;
+    const mini=s.querySelector('.mini');
+    if(!p.bust)(p.hand||[0,0,0]).forEach(c=>mini.appendChild(cardEl(c,{back:!p.hand})));
+    return s;
+  }));
+  // me
+  $('myname').textContent=you.name;
+  $('myhand').replaceChildren(...(you.hand||[]).map(c=>cardEl(c)));
+  $('mysum').textContent=you.hand?val(you.hand):'-';
+  $('mychips').textContent=you.bust?'脱落（観戦中）':`チップ ${you.chips}`;
+  $('me').classList.toggle('turn',v.phase==='claim'&&v.turn===v.you);
+  $('me').classList.toggle('claimer',v.claimer===v.you&&v.claim!=null);
+  renderCenter(v,phaseChanged);
+  renderActions(v);
 }
 
-/* ---------- buzz window: anyone can call liar ---------- */
-const BUZZ_MS=3200;
-function buzzWindow(ci){
-  return new Promise(res=>{
-    let done=false;const timers=[];
-    const finish=k=>{if(done)return;done=true;timers.forEach(clearTimeout);res(k);};
-    const cands=PLAYERS.map((p,k)=>k).filter(k=>k!==ci&&!PLAYERS[k].out);
-    cands.forEach(k=>{
-      const p=PLAYERS[k];if(p.you)return;
-      const pr=pReach(G.claim,p.hand);
-      if(pr<p.doubt)timers.push(setTimeout(()=>finish(k),Math.min(BUZZ_MS-250,450+pr*3600+Math.random()*900)));
-    });
-    const node=cands.includes(0)
-      ?btn('ライアー！','gold buzzbtn',()=>finish(0))
-      :waitMsg('ライアー受付中…');
-    node.classList.add('buzzing');
-    const bar=document.createElement('i');bar.className='buzzbar';bar.style.animationDuration=BUZZ_MS+'ms';node.appendChild(bar);
-    setActions([node]);
-    timers.push(setTimeout(()=>finish(null),BUZZ_MS));
-  });
-}
-
-/* ---------- bots ---------- */
-async function botTurn(p){
-  await sleep(750);
-  const target=val([...p.hand,4])+Math.random()*p.bluff-1;
-  const min=G.claim==null?1:G.claim+1;
-  if(p.chips<1)return {t:'fold'};
-  if(G.claim==null){
-    return {t:'claim',v:Math.max(1,Math.round(target-2-Math.random()*2))};
+function phaseHTML(t,s){return `<div class="phase in"><div class="ph-t">${t}</div><div class="ph-s">${s||''}</div></div>`;}
+function renderCenter(v,changed){
+  const c=$('center');const P=v.players;
+  const C=v.claimer!=null?P[v.claimer]:null,D=v.caller!=null?P[v.caller]:null;
+  const claimBox=()=>`<div class="pot">ポット <b>${v.pot}</b></div>
+    <div class="claimbox"><div class="claimwho">${v.claim==null?'まだ宣言なし':nm(v,v.claimer)+' の宣言'}</div>
+    <div class="claimnum${v.claim==null?' empty':''}">${v.claim==null?'—':v.claim}</div><div class="claimsub">手札3枚＋あと1枚の合計</div></div>
+    <div class="log">${esc(v.log)}${v.phase==='buzz'?'<br><span style="color:var(--mute)">ライアー受付中…</span>':''}</div>`;
+  const liarPhases=['liar','shuffle','draw','discard','peek','cfold','checked','respond','dropped','open'];
+  if(v.phase==='claim'||v.phase==='buzz'){c.innerHTML=claimBox();return;}
+  if(v.phase==='gameover'){
+    c.innerHTML=`<div class="big-result">${v.winner?esc(v.winner)+' の勝ち！':'ゲーム終了'}</div><div class="log">最後まで生き残った人の勝ち。</div>`;return;
   }
-  if(target>=min){
-    let v=Math.random()<p.jump?Math.max(min,Math.round(target)):min;
-    v=Math.min(v,G.claim+p.chips);
-    return {t:'claim',v};
-  }
-  return {t:'fold'};
-}
-
-/* ---------- liar resolution (slow, step by step) ---------- */
-const T=k=>k; // timing helper (ms)
-function phase(title,sub){
-  const ph=$('phase');ph.classList.remove('in');void ph.offsetWidth;ph.classList.add('in');
-  ph.innerHTML=`<div class="ph-t">${title}</div><div class="ph-s">${sub||''}</div>`;
-}
-async function resolveDoubt(ci,di){
-  const C=PLAYERS[ci],D=PLAYERS[di];
-  const rv=$('reveal');rv.hidden=false;$('claimbox').hidden=true;
-  rv.innerHTML=`<div class="phase" id="phase"></div>
-    <div class="zone" id="dzone" hidden><div class="claimsub">${D.name} の手札（伏せて混ぜた）</div><div class="row" id="drow"></div></div>
-    <div class="zone" id="czone" hidden><div class="claimsub" id="csub">${C.name} の手札＋引いた1枚 ／ 宣言 <b style="color:var(--ver)">${G.claim}</b></div><div class="row" id="crow"></div></div>
-    <div class="verdict" id="verdict"></div>`;
-  setActions([waitMsg('…')]);
-  log('');
-  // 1. call
-  phase('ライアー！',`${D.name} が ${C.name} の「${G.claim} 以上」を嘘だと言った`);
-  await sleep(T(2000));
-  // 2. shuffle
-  const drow=$('drow'),crow=$('crow');
-  const pile=shuffle(D.hand.slice());
-  const dcards=pile.map(v=>{const c=cardEl(v,{back:true});drow.appendChild(c);return c;});
-  $('dzone').hidden=false;
-  phase('シャッフル',`${D.name} が手札を伏せて混ぜる。${D.name} 本人にも、どれが引かれるかわからない`);
-  dcards.forEach((c,k)=>{c.style.animationDelay=(k*.08)+'s';c.classList.add('shuffling');});
-  await sleep(T(1900));
-  dcards.forEach(c=>c.classList.remove('shuffling'));
-  // 3. draw
-  let idx;
-  if(C.you){
-    phase('ドロー','1枚選んで引く');
-    dcards.forEach(c=>c.classList.add('pick'));
-    setActions([waitMsg('引く1枚をタップ')]);
-    idx=await new Promise(r=>dcards.forEach((c,i)=>c.onclick=()=>r(i)));
-    dcards.forEach(c=>{c.classList.remove('pick');c.onclick=null;});
-  }else{
-    phase('ドロー',`${C.name} が1枚引く`);
-    await sleep(T(1300));idx=Math.floor(Math.random()*3);
-  }
-  const drawn=pile[idx],total=val([...C.hand,drawn]),ok=total>=G.claim;
-  dcards[idx].classList.add('drawn');
-  setActions([waitMsg('…')]);
-  await sleep(T(900));
-  // 4. discard
-  phase('捨て札','残りの2枚は、誰も見ずに捨てる');
-  dcards.forEach((c,k)=>{if(k!==idx)c.classList.add('discard');});
-  await sleep(T(1500));
-  // 5. peek
-  $('czone').hidden=false;
-  C.hand.forEach(v=>crow.appendChild(cardEl(v,{back:!C.you})));
-  const pl=document.createElement('span');pl.className='plus';pl.textContent='+';crow.appendChild(pl);
-  const dc=cardEl(drawn,{back:!C.you});dc.classList.add('drawn');crow.appendChild(dc);
-  dcards[idx].classList.add('discard');
-  if(C.you){
-    phase('のぞき見','引いた札は、あなただけが見ている');
-    $('csub').innerHTML=`あなたの合計 <b style="color:var(--bone)">${total}</b> ／ 宣言 <b style="color:var(--ver)">${G.claim}</b>　<b style="color:${ok?'var(--good)':'var(--gold)'}">${ok?'届いている':'届いていない'}</b>`;
-  }else{
-    phase('のぞき見',`${C.name} だけが、引いた札を見ている…`);
-  }
-  // 6. check / fold
-  let dec;
-  if(C.you){
-    dec=await choose([['フォールド','','fold'],['チェック','main','check']]);
-  }else{
-    await sleep(T(2300));dec=(ok||Math.random()<C.push)?'check':'fold';
-  }
-  setActions([waitMsg('…')]);
-  setAct(C,dec==='check'?'チェック':'フォールド',dec==='check'?'claim':'');
-  if(dec==='fold'){
-    phase('フォールド',`${C.name} が諦めた。引いた札は見せない`);
-    await sleep(T(1800));
-    $('dzone').hidden=true;
-    return {winner:di,msg:`${C.name} はフォールド。<b>${D.name}</b> の勝ち。`,hidden:true,total,ok,C};
-  }
-  phase('チェック',`${C.name}：「届いている」`);
-  await sleep(T(1800));
-  // 7. call / drop
-  let resp;
-  if(D.you){
-    phase('受ける？ 引く？','受けて外したら、宣言を超えていた分を払う');
-    resp=await choose([['引く','','drop'],['受ける','gold','call']]);
-  }else{
-    phase('受ける？ 引く？',`${D.name} が迷っている…`);
-    await sleep(T(2200));
-    const pre=pReach(G.claim,D.hand);
-    const post=pre/(pre+(1-pre)*D.q);
-    resp=post<.5?'call':'drop';
-  }
-  setActions([waitMsg('…')]);
-  if(resp==='drop'){
-    setAct(D,'引いた');
-    phase('引く',`${D.name} が引いた。カードは誰にも見せない`);
-    await sleep(T(1800));
-    $('dzone').hidden=true;
-    return {winner:ci,msg:`${D.name} は引いた。<b>${C.name}</b> がポットを取る。`,hidden:true,total,ok,C};
-  }
-  setAct(D,'受ける！','doubt');
-  phase('受ける','オープン！');
-  await sleep(T(1400));
-  // 8. open one by one
-  if(!C.you)$('csub').innerHTML=`${C.name} の手札＋引いた1枚 ／ 宣言 <b style="color:var(--ver)">${G.claim}</b>`;
-  const cs=[...crow.querySelectorAll('.card')];
-  const v=$('verdict');let run=0;
-  for(let k=0;k<3;k++){
-    const c=cardEl(C.hand[k]);c.classList.add('flip');cs[k].replaceWith(c);run=val(C.hand.slice(0,k+1));
-    v.className='verdict';v.textContent=`${run}`;
-    await sleep(T(800));
-  }
-  phase('最後の1枚',`いま ${run}。宣言 ${G.claim} に届くか`);
-  await sleep(T(1600));
-  const last=cardEl(drawn);last.classList.add('flip','drawn');cs[3].replaceWith(last);
-  await sleep(T(500));
-  v.className='verdict '+(ok?'ok':'ng');
-  v.textContent=`合計 ${total} ${ok?'≥':'<'} ${G.claim}　${ok?'宣言成立':'宣言失敗'}`;
-  phase(ok?'成立':'失敗',ok?`${C.name} の勝ち`:`${D.name} の勝ち`);
-  await sleep(T(1200));
-  $('dzone').hidden=true;
-  const winner=ok?ci:di,loser=ok?D:C;
-  const amt=ok?Math.min(total-G.claim,D.chips):Math.min(G.pot,C.chips);
-  let msg=ok
-    ?`<b>${C.name}</b> の勝ち！ ${D.name} は超過分 ${total-G.claim} 枚を払う${amt<total-G.claim?`（手持ち ${amt} 枚まで）`:''}。`
-    :`<b>${D.name}</b> の勝ち！ ${C.name} はポットと同額 ${amt} 枚を払う。`;
-  if(ok&&val([...C.hand,4])<G.claim)msg+=`<br>${D.name} の札が嘘を本当にした。`;
-  return {winner,msg,pay:{from:loser,to:PLAYERS[winner],amt}};
-}
-
-/* ---------- round ---------- */
-async function round(){
-  G.round++;G.pot=0;G.claim=null;G.claimer=null;
-  $('reveal').hidden=true;$('claimbox').hidden=false;
-  PLAYERS.forEach(p=>{if(p.chips<=0){p.chips=START;}});
-  const deck=shuffle(DECK.slice());
-  PLAYERS.forEach(p=>{p.out=false;p.hand=[deck.pop(),deck.pop(),deck.pop()];p.chips--;G.pot++;setAct(p,'');drawMini(p,false);});
-  setClaim();render();
-  const starter=G.start%4;G.start++;
-  log(`ROUND ${G.round}。${PLAYERS[starter].name} から。`);
-  let i=starter,result=null;
-  for(let guard=0;guard<200;guard++){
-    const p=PLAYERS[i];
-    if(!p.out){
-      if(G.claimer===i){result={winner:i,msg:`誰もライアーと言わなかった。<b>${p.name}</b> が手札を見せずに総取り。`};break;}
-      const live=PLAYERS.filter(q=>!q.out);
-      if(live.length===1){result={winner:PLAYERS.indexOf(live[0]),msg:`<b>${live[0].name}</b> 以外が全員降りた。`};break;}
-      render(i);
-      if(!p.you)setActions([waitMsg(`${p.name} が考え中…`)]);
-      let a=p.you?await userTurn(p):await botTurn(p);
-      if(G.claim==null&&a.t!=='claim')a={t:'claim',v:1};
-      if(a.t==='claim'){
-        const cost=G.claim==null?1:a.v-G.claim;p.chips-=cost;G.pot+=cost;G.claim=a.v;G.claimer=i;setAct(p,`宣言 ${a.v}（${cost}枚）`,'claim');setClaim();
-        log(`${p.name}：「${a.v} 以上」　チップ ${cost} 枚<br><span style="color:var(--mute)">ライアー受付中…</span>`);
-        render();
-        const caller=await buzzWindow(i);
-        if(caller!=null){
-          setAct(PLAYERS[caller],'ライアー！','doubt');render();
-          result=await resolveDoubt(i,caller);break;
-        }
-        log(`${p.name}：「${a.v} 以上」　チップ ${cost} 枚`);
-      }else if(a.t==='doubt'){
-        setAct(p,'ライアー！','doubt');render();
-        result=await resolveDoubt(G.claimer,i);break;
-      }else{
-        p.out=true;setAct(p,'降りた');log(`${p.name} は降りた。`);
-      }
-      render();
+  if(v.phase==='result'&&!v.reveal){c.innerHTML=`<div class="pot">ラウンド ${v.round} 終了</div><div class="log" style="font-size:16px">${v.result?v.result.msg:''}</div>`;return;}
+  // liar sequence & revealed result
+  const youC=v.claimer===v.you;
+  const titles={
+    liar:['ライアー！',`${nm(v,v.caller)} が ${nm(v,v.claimer)} の「${v.claim} 以上」を嘘だと言った`],
+    shuffle:['シャッフル',`${nm(v,v.caller)} が手札を伏せて混ぜる。本人にも、どれが引かれるかわからない`],
+    draw:['ドロー',youC?'1枚選んで引く':`${nm(v,v.claimer)} が1枚引く`],
+    discard:['捨て札','残りの2枚は、誰も見ずに捨てる'],
+    peek:['のぞき見',youC?'引いた札は、あなただけが見ている':`${nm(v,v.claimer)} だけが、引いた札を見ている…`],
+    cfold:['フォールド',`${nm(v,v.claimer)} が諦めた。引いた札は見せない`],
+    checked:['チェック',`${nm(v,v.claimer)}：「届いている」`],
+    respond:['受ける？ 引く？',v.caller===v.you?'受けて外したら、宣言を超えていた分を払う':`${nm(v,v.caller)} が迷っている…`],
+    dropped:['引く',`${nm(v,v.caller)} が引いた。カードは誰にも見せない`],
+    open:['受ける','オープン！'],
+    result:[v.ok?'成立':'失敗',v.result?v.result.msg:'']
+  };
+  const [t,s]=titles[v.phase]||['',''];
+  if(!changed&&v.phase==='open')return; // keep running animation
+  c.innerHTML=`<div class="reveal">${phaseHTML(t,s)}
+    <div class="zone" id="dzone"><div class="claimsub">${nm(v,v.caller)} の手札（伏せて混ぜた）</div><div class="row" id="drow"></div></div>
+    <div class="zone" id="czone"><div class="claimsub" id="csub">${nm(v,v.claimer)} の手札＋引いた1枚 ／ 宣言 <b style="color:var(--ver)">${v.claim}</b></div><div class="row" id="crow"></div></div>
+    <div class="verdict" id="verdict"></div></div>`;
+  const ph=v.phase;
+  const showPile=['shuffle','draw','discard'].includes(ph);
+  const showClaimer=['discard','peek','cfold','checked','respond','dropped','open','result'].includes(ph);
+  $('dzone').hidden=!showPile;$('czone').hidden=!showClaimer;
+  if(showPile){
+    const drow=$('drow');
+    for(let i=0;i<3;i++){
+      const cd=cardEl(0,{back:true});
+      if(ph==='shuffle'){cd.classList.add('shuffling');cd.style.animationDelay=(i*.08)+'s';}
+      if(ph==='draw'&&youC){cd.classList.add('pick');cd.onclick=()=>{act({t:'pick',i});drow.querySelectorAll('.card').forEach(x=>{x.classList.remove('pick');x.onclick=null;});};}
+      if(ph==='discard'){if(i===v.pick)cd.classList.add('drawn');else cd.classList.add('discard');}
+      drow.appendChild(cd);
     }
-    i=(i+1)%4;
   }
-  PLAYERS[result.winner].chips+=G.pot;
-  let gain=G.pot;G.pot=0;
-  if(result.pay){result.pay.from.chips-=result.pay.amt;result.pay.to.chips+=result.pay.amt;gain+=result.pay.amt;}
-  if(G.practice)PLAYERS.forEach(p=>drawMini(p,true));
-  render();
-  let extra='';
-  if(G.practice&&result.hidden){
-    extra=`<br><span style="color:var(--mute)">（${result.C.name} の合計は ${result.total}。${result.ok?'本当に届いていた':'ハッタリだった'}）</span>`;
-  }else if(G.practice&&G.claimer!=null&&$('reveal').hidden){
-    const c=PLAYERS[G.claimer];
-    extra=`<br><span style="color:var(--mute)">（${c.name} の手札は合計 ${val(c.hand)}。${val([...c.hand,4])<G.claim?'嘘だった':'ほぼ本当だった'}）</span>`;
+  if(showClaimer){
+    const crow=$('crow');
+    const hand=v.players[v.claimer].hand;
+    const open=ph==='open'||ph==='result';
+    for(let i=0;i<3;i++)crow.appendChild(cardEl(hand?hand[i]:0,{back:!hand||(ph==='open')}));
+    const pl=document.createElement('span');pl.className='plus';pl.textContent='+';crow.appendChild(pl);
+    const dc=cardEl(v.drawn,{back:v.drawn==null||ph==='open'});dc.classList.add('drawn');crow.appendChild(dc);
+    if(youC&&!open&&v.total!=null)$('csub').innerHTML=`あなたの合計 <b style="color:var(--bone)">${v.total}</b> ／ 宣言 <b style="color:var(--ver)">${v.claim}</b>　<b style="color:${v.ok?'var(--good)':'var(--gold)'}">${v.ok?'届いている':'届いていない'}</b>`;
+    if(ph==='result'){const vd=$('verdict');vd.className='verdict '+(v.ok?'ok':'ng');vd.textContent=`合計 ${v.total} ${v.ok?'≥':'<'} ${v.claim}　${v.ok?'宣言成立':'宣言失敗'}`;}
+    if(ph==='open')runOpen(v);
   }
-  log(`${result.msg}（+${gain}）${extra}`);
-  await tap('次のラウンド');
+}
+function runOpen(v){
+  const token={};ME.openAnim=token;
+  const hand=v.players[v.claimer].hand,crow=$('crow'),vd=$('verdict');
+  const cs=[...crow.querySelectorAll('.card')];
+  const step=(ms,fn)=>new Promise(r=>setTimeout(()=>{if(ME.openAnim===token&&document.body.contains(crow))fn();r();},ms/SPEED));
+  (async()=>{
+    await step(900,()=>{});
+    for(let k=0;k<3;k++){
+      await step(850,()=>{const c=cardEl(hand[k]);c.classList.add('flip');cs[k].replaceWith(c);vd.className='verdict';vd.textContent=String(val(hand.slice(0,k+1)));});
+    }
+    await step(700,()=>{const ph=document.querySelector('#center .phase');if(ph)ph.outerHTML=phaseHTML('最後の1枚',`いま ${val(hand)}。宣言 ${v.claim} に届くか`);});
+    await step(1700,()=>{const c=cardEl(v.drawn);c.classList.add('flip','drawn');cs[3].replaceWith(c);});
+    await step(500,()=>{vd.className='verdict '+(v.ok?'ok':'ng');vd.textContent=`合計 ${v.total} ${v.ok?'≥':'<'} ${v.claim}　${v.ok?'宣言成立':'宣言失敗'}`;});
+  })();
 }
 
-$('openRules').onclick=()=>$('ov').hidden=false;
-let started=false;
-$('closeRules').onclick=async()=>{
-  G.practice=$('practice').checked;$('ov').hidden=true;
-  if(started)return;started=true;
-  buildSeats();
-  while(true)await round();
+function renderActions(v){
+  const P=v.players,you=P[v.you],ph=v.phase;
+  if(ph==='claim'){
+    if(v.turn===v.you&&!you.bust){
+      const min=v.claim==null?1:v.claim+1;
+      const cost=x=>v.claim==null?Math.min(1,you.chips):x-v.claim;
+      const max=v.claim==null?99:v.claim+you.chips;
+      let x=Math.min(Math.max(min,v.claim==null?val([...you.hand,4]):min),Math.max(min,max));
+      const st=document.createElement('div');st.className='stepper';
+      const out=document.createElement('output');
+      const minus=document.createElement('button');minus.textContent='−';minus.setAttribute('aria-label','減らす');
+      const plus=document.createElement('button');plus.textContent='+';plus.setAttribute('aria-label','増やす');
+      const cb=btn('','main',()=>{setActions([waitMsg('送信中…')]);act({t:'claim',v:x});});
+      const upd=()=>{out.textContent=x;minus.disabled=x<=min;plus.disabled=x>=max;cb.textContent=`宣言（${cost(x)}枚）`;cb.disabled=cost(x)>you.chips;};
+      minus.onclick=()=>{if(x>min){x--;upd();}};plus.onclick=()=>{if(x<max){x++;upd();}};
+      st.append(minus,out,plus);upd();
+      const items=[st,cb];
+      if(v.claim!=null)items.push(btn('降りる','',()=>{setActions([waitMsg('送信中…')]);act({t:'fold'});}));
+      setActions(items);
+    }else setActions([waitMsg(`${P[v.turn]?P[v.turn].name:''} の手番`)]);
+    return;
+  }
+  if(ph==='buzz'){
+    const can=v.you!==v.claimer&&!you.folded&&!you.bust;
+    const node=can?btn('ライアー！','gold buzzbtn',()=>{act({t:'liar'});setActions([waitMsg('ライアー！')]);}):waitMsg('ライアー受付中…');
+    setActions([drain(node,v.buzzLeft)]);
+    return;
+  }
+  if(ph==='draw')return setActions([waitMsg(v.claimer===v.you?'引く1枚をタップ':`${P[v.claimer].name} が引いています…`)]);
+  if(ph==='peek'){
+    if(v.claimer===v.you)return setActions([btn('フォールド','',()=>{setActions([waitMsg('…')]);act({t:'decide',v:'fold'});}),btn('チェック','main',()=>{setActions([waitMsg('…')]);act({t:'decide',v:'check'});})]);
+    return setActions([waitMsg(`${P[v.claimer].name} が考えている…`)]);
+  }
+  if(ph==='respond'){
+    if(v.caller===v.you)return setActions([btn('引く','',()=>{setActions([waitMsg('…')]);act({t:'respond',v:'drop'});}),btn('受ける','gold',()=>{setActions([waitMsg('…')]);act({t:'respond',v:'call'});})]);
+    return setActions([waitMsg(`${P[v.caller].name} が迷っている…`)]);
+  }
+  if(ph==='result'){
+    const n=P.filter(p=>p.ready||!p.connected).length;
+    if(!you.ready)return setActions([btn('次のラウンドへ','main',()=>act({t:'ready'}))]);
+    return setActions([waitMsg(`みんなを待っています（${n}/${P.length}）`)]);
+  }
+  if(ph==='gameover'){
+    if(v.isHost)return setActions([btn('もう一度遊ぶ','main',()=>act({t:'again'}))]);
+    return setActions([waitMsg('ホストの再開を待っています')]);
+  }
+  setActions([waitMsg('…')]);
+}
+
+/* =========================================================
+   lobby wiring
+   ========================================================= */
+$('nameIn').value=store.get('lc-name')||'';
+if(Q.get('room')){$('codeIn').value=Q.get('room').toUpperCase();$('joinBtn').classList.add('main');$('joinBtn').classList.remove('gold');}
+function needName(){const n=$('nameIn').value.trim();if(!n){lobbyErr('名前を入れてください');$('nameIn').focus();return null;}store.set('lc-name',n);return n;}
+$('createBtn').onclick=()=>{const n=needName();if(!n)return;if(typeof Peer==='undefined'){lobbyErr('通信ライブラリを読み込めませんでした');return;}$('createBtn').disabled=true;lobbyErr('部屋を作成中…');hostOpen(n);};
+$('joinBtn').onclick=()=>{const n=needName();if(!n)return;const code=$('codeIn').value.trim().toUpperCase();if(code.length!==4){lobbyErr('4文字の部屋コードを入れてください');return;}if(typeof Peer==='undefined'){lobbyErr('通信ライブラリを読み込めませんでした');return;}$('joinBtn').disabled=true;clientJoin(n,code);};
+$('startBtn').onclick=()=>act({t:'start'});
+$('shareBtn').onclick=async()=>{
+  const url=location.origin+location.pathname+'?room='+ME.code;
+  const text=`ライアーカウントで遊ぼう！ 部屋コード ${ME.code}`;
+  try{if(navigator.share){await navigator.share({title:'ライアーカウント',text,url});return;}}catch(e){return;}
+  try{await navigator.clipboard.writeText(url);banner('招待リンクをコピーしました');}catch(e){banner(url,8000);}
 };
+$('openRules').onclick=()=>$('ov').hidden=false;
+$('lobbyRules').onclick=e=>{e.preventDefault();$('ov').hidden=false;};
+$('closeRules').onclick=()=>$('ov').hidden=true;
+window.addEventListener('beforeunload',e=>{if(ME.mode==='host'&&H.phase!=='lobby'){e.preventDefault();e.returnValue='';}});
 </script>
 </body>
 </html>

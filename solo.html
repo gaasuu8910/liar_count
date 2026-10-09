@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark only">
+<title>ライアーカウント｜テストプレイ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0E0D0C;--panel:#1A1816;--line:#34302B;--bone:#F1EADB;--ink:#16130F;
+  --ver:#E8452C;--gold:#E9B949;--mute:#8E867A;--good:#7FC79A;
+  --display:'Dela Gothic One','Hiragino Sans',sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;background:var(--bg)!important;color:var(--bone)}
+body{font-family:'Zen Kaku Gothic New','Hiragino Sans',sans-serif;font-weight:500;-webkit-font-smoothing:antialiased;overflow:hidden}
+button{font:inherit;cursor:pointer;color:inherit}
+button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.app{height:100dvh;max-width:720px;margin:0 auto;display:grid;grid-template-rows:auto auto 1fr auto auto;gap:10px;padding:10px 12px calc(12px + env(safe-area-inset-bottom))}
+
+.top{display:flex;align-items:center;justify-content:space-between}
+.logo{font-family:var(--display);font-size:18px;letter-spacing:.02em}
+.logo span{color:var(--ver)}
+.top-r{display:flex;gap:8px;align-items:center}
+.ghost{background:none;border:1.5px solid var(--line);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:700}
+.round{font-size:12px;color:var(--mute)}
+
+/* seats */
+.bots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.seat{position:relative;background:var(--panel);border:1.5px solid var(--line);border-radius:14px;padding:8px 6px 7px;display:flex;flex-direction:column;align-items:center;gap:5px;transition:border-color .2s,opacity .2s,box-shadow .2s}
+.seat.turn{border-color:var(--gold);box-shadow:0 0 0 3px rgba(233,185,73,.18)}
+.seat.out{opacity:.38}
+.seat.claimer{border-color:var(--ver)}
+.sname{font-weight:900;font-size:13px}
+.sstyle{font-size:10px;color:var(--mute);margin-top:-4px}
+.schips{font-size:12px;color:var(--gold);font-weight:700}
+.sact{font-size:11.5px;font-weight:900;min-height:1.3em;text-align:center}
+.sact.claim{color:var(--ver)}
+.sact.doubt{color:var(--gold)}
+.mini{display:flex;gap:3px}
+.mini .card{--w:24px}
+
+/* cards */
+.card{--w:56px;flex:none;width:var(--w);height:calc(var(--w)*1.36);border-radius:calc(var(--w)*.14);background:var(--bone);color:var(--ink);display:grid;place-items:center;font-family:var(--display);font-size:calc(var(--w)*.52);position:relative;transition:transform .25s}
+.card.dbl{background:#2A2210;color:var(--gold);box-shadow:inset 0 0 0 2px var(--gold);font-size:calc(var(--w)*.42)}
+.card.curse{background:#2A1512;color:var(--ver);box-shadow:inset 0 0 0 2px var(--ver)}
+.card.back{background:repeating-linear-gradient(135deg,#3B2A24 0 4px,#2A1F1B 4px 8px);box-shadow:inset 0 0 0 1.5px #5A463C;color:transparent}
+.card.pick{cursor:pointer;animation:bob 1s ease-in-out infinite}
+.card.pick:hover{transform:translateY(-4px)}
+@keyframes bob{50%{transform:translateY(-4px)}}
+.phase{display:flex;flex-direction:column;align-items:center;gap:2px;min-height:4.2em}
+.phase.in{animation:phin .35s ease-out}
+@keyframes phin{from{opacity:0;transform:translateY(6px) scale(.96)}to{opacity:1;transform:none}}
+.ph-t{font-family:var(--display);font-size:clamp(28px,8vw,40px);color:var(--ver);line-height:1.15}
+.ph-s{font-size:13px;color:var(--bone);font-weight:700;max-width:24em;line-height:1.5}
+.zone{display:flex;flex-direction:column;align-items:center;gap:6px}
+.card.shuffling{animation:shuf .32s ease-in-out 5 alternate}
+@keyframes shuf{0%{transform:translateX(0) rotate(0)}50%{transform:translateX(14px) rotate(6deg)}100%{transform:translateX(-14px) rotate(-6deg)}}
+.card.discard{opacity:.22;transform:scale(.9)}
+.card.drawn{box-shadow:0 0 0 3px var(--gold);transform:translateY(-6px)}
+.card.flip{animation:flip .45s ease-out}
+@keyframes flip{0%{transform:rotateY(90deg)}100%{transform:none}}
+
+/* center */
+.center{min-height:0;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center}
+.pot{font-size:13px;color:var(--mute)}
+.pot b{color:var(--gold);font-size:16px}
+.claimbox{display:flex;flex-direction:column;align-items:center;gap:2px}
+.claimwho{font-size:13px;color:var(--mute);min-height:1.3em}
+.claimnum{font-family:var(--display);font-size:clamp(58px,17vw,96px);line-height:1;color:var(--ver);transition:transform .2s}
+.claimnum.empty{color:var(--line)}
+.claimnum.bump{animation:bump .35s}
+@keyframes bump{40%{transform:scale(1.18)}}
+.claimsub{font-size:12px;color:var(--mute)}
+.reveal{display:flex;flex-direction:column;align-items:center;gap:8px;min-height:0}
+.reveal .row{display:flex;gap:6px;align-items:center}
+.reveal .card{--w:46px}
+.plus{font-family:var(--display);color:var(--mute);font-size:20px}
+.verdict{font-family:var(--display);font-size:22px}
+.verdict.ok{color:var(--ver)}
+.verdict.ng{color:var(--gold)}
+.log{font-size:14px;font-weight:700;line-height:1.6;min-height:2.4em;max-width:30em}
+.log b{color:var(--gold)}
+
+/* me */
+.me{background:var(--panel);border:1.5px solid var(--line);border-radius:16px;padding:10px 12px;display:flex;align-items:center;gap:14px;transition:border-color .2s}
+.me.turn{border-color:var(--gold)}
+.me.claimer{border-color:var(--ver)}
+.me .hand{display:flex;gap:6px}
+.me-info{display:flex;flex-direction:column;gap:3px;min-width:0}
+.me-name{font-weight:900;font-size:14px}
+.me-sum{font-size:13px}
+.me-sum b{font-family:var(--display);font-size:20px;color:var(--bone)}
+.me-hint{font-size:11px;color:var(--mute)}
+.me-chips{font-size:13px;color:var(--gold);font-weight:700}
+
+/* actions */
+.actions{display:flex;gap:8px;min-height:58px}
+.actions>*{flex:1}
+.buzzing{position:relative;overflow:hidden}
+.buzzbtn{font-size:20px;font-family:var(--display);font-weight:400}
+.buzzbar{position:absolute;left:0;bottom:0;height:5px;width:100%;background:var(--ver);transform-origin:left;animation:drain linear forwards}
+@keyframes drain{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+.btn{border:0;border-radius:14px;padding:14px 8px;font-weight:900;font-size:15px;background:#2A2724}
+.btn.main{background:var(--ver);color:#fff}
+.btn.gold{background:var(--gold);color:var(--ink)}
+.btn:disabled{opacity:.3}
+.wait{display:grid;place-items:center;border:1.5px dashed var(--line);border-radius:14px;color:var(--mute);font-weight:700;font-size:14px}
+.stepper{display:flex;align-items:center;background:#2A2724;border-radius:14px;flex:1.3}
+.stepper button{background:none;border:0;font-size:22px;font-weight:900;width:42px;height:100%}
+.stepper output{flex:1;text-align:center;font-family:var(--display);font-size:24px}
+
+/* rules overlay */
+.ov{position:fixed;inset:0;background:rgba(8,7,6,.86);display:grid;place-items:center;padding:16px;z-index:5}
+.ov[hidden]{display:none}
+.rules{background:var(--panel);border:1.5px solid var(--line);border-radius:20px;padding:22px 20px;max-width:440px;width:100%;max-height:100%;overflow:auto}
+.rules h2{font-family:var(--display);font-weight:400;font-size:30px;margin:0 0 2px}
+.rules h2 span{color:var(--ver)}
+.rules .lead{color:var(--mute);font-size:13px;margin:0 0 16px}
+.rules ol{margin:0;padding:0;list-style:none;counter-reset:r;display:grid;gap:12px}
+.rules li{counter-increment:r;display:grid;grid-template-columns:24px 1fr;gap:6px;font-size:14px;line-height:1.6}
+.rules li::before{content:counter(r);font-family:var(--display);color:var(--ver);font-size:20px;line-height:1.3}
+.rules li b{color:var(--gold)}
+.rules .deck{margin:16px 0;font-size:13px;color:var(--mute);line-height:1.7;border-top:1px solid var(--line);padding-top:12px}
+.rules label{display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:14px}
+.rules .btn{width:100%}
+
+@media (max-height:720px){
+  .reveal .card{--w:34px}
+  .ph-t{font-size:24px}
+  .ph-s{font-size:12px}
+  .phase{min-height:3.3em}
+  .reveal{gap:5px}
+  .verdict{font-size:18px}
+}
+@media (max-height:680px){
+  .app{gap:7px}
+  .card{--w:48px}
+  .claimnum{font-size:54px}
+  .btn{padding:11px 8px}
+  .actions{min-height:48px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="logo">ライアー<span>カウント</span></div>
+    <div class="top-r"><span class="round" id="round"></span><button class="ghost" id="openRules">ルール</button></div>
+  </header>
+  <section class="bots" id="bots"></section>
+  <main class="center" id="center">
+    <div class="pot">ポット <b id="pot">0</b></div>
+    <div class="claimbox" id="claimbox">
+      <div class="claimwho" id="claimwho"></div>
+      <div class="claimnum empty" id="claimnum">—</div>
+      <div class="claimsub" id="claimsub">手札3枚＋あと1枚の合計</div>
+    </div>
+    <div class="reveal" id="reveal" hidden></div>
+    <div class="log" id="log" aria-live="polite"></div>
+  </main>
+  <section class="me" id="me">
+    <div class="hand" id="myhand"></div>
+    <div class="me-info">
+      <div class="me-name">あなた</div>
+      <div class="me-sum">手札の合計 <b id="mysum">0</b></div>
+      <div class="me-hint">「あと1枚」の平均はだいたい 4。×2は合計を2倍</div>
+      <div class="me-chips" id="mychips"></div>
+    </div>
+  </section>
+  <footer class="actions" id="actions"></footer>
+</div>
+
+<div class="ov" id="ov">
+  <div class="rules">
+    <h2>ライアー<span>カウント</span></h2>
+    <p class="lead">嘘で降ろせ。見破られたら、運と度胸に賭けろ。</p>
+    <ol>
+      <li><div>手番では「<b>自分の手札3枚＋あと1枚の合計は○以上</b>」と宣言する。前より大きい数字で、<b>上げた数だけチップを払う</b>（最初の宣言は1枚）。宣言しないなら降りる。</div></li>
+      <li><div>宣言の直後、次の人が動く前なら、<b>誰でも早い者勝ちで「ライアー」</b>と言える（降りた人は除く）。</div></li>
+      <li><div>誰にもライアーと言われず手番が自分まで一周したら、<b>手札を見せずに</b>ポット総取り。</div></li>
+      <li><div>ライアーと言った人は手札を伏せて混ぜ、宣言者が1枚引いて<b>自分だけで見る</b>。残りの2枚は見ずに捨てる。届いたと言い張るなら「チェック」、諦めるなら「フォールド」。</div></li>
+      <li><div>チェックされたら、ライアーと言った人は「<b>受ける</b>」か「<b>引く</b>」。受けたら公開し、手札3枚＋引いた1枚が宣言以上なら宣言者の勝ち。負けた側は追加で払う。<b>ライアーが外れたら、宣言を超えていた分</b>を、宣言者が届かなかったら、ポットと同額を。引いたら宣言者がポットを取り、カードは誰にも見せない。</div></li>
+    </ol>
+    <p class="deck">カード：1〜9が各4枚、「−5」が2枚、「×2」が2枚（×2は他の札の合計を2倍、2枚なら4倍）。各自3枚、チップ10枚。毎ラウンド参加料1枚。ライアーと言うのは無料。<br>高い札を持ったままライアーと言うと、その札が嘘つきを助けてしまう。</p>
+    <label><input type="checkbox" id="practice"> 練習モード：ラウンド後に全員の手札を見る</label>
+    <button class="btn main" id="closeRules">はじめる</button>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const DECK=[];for(let v=1;v<=9;v++)for(let k=0;k<4;k++)DECK.push(v);DECK.push(-5,-5,'x2','x2');
+// value of a set of cards: sum of numbers, doubled for each ×2
+const val=cs=>cs.filter(c=>c!=='x2').reduce((a,b)=>a+b,0)*2**cs.filter(c=>c==='x2').length;
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const sum=a=>a.reduce((x,y)=>x+y,0);
+// distribution of a random 3-card hand total
+const SAMP=[];for(let i=0;i<400;i++){const d=shuffle(DECK.slice());SAMP.push(d.slice(0,3));}
+// chance a claimer reaches C if he draws from `hand`
+function pReach(C,hand){let n=0;for(const x of SAMP)for(const c of hand)if(val([...x,c])>=C)n++;return n/(SAMP.length*hand.length);}
+
+const PLAYERS=[
+  {name:'あなた',you:true},
+  {name:'ミナト',style:'慎重派',bluff:2,doubt:.38,push:.1,q:.3,jump:.5},
+  {name:'レックス',style:'大胆',bluff:7,doubt:.28,push:.45,q:.25,jump:.4},
+  {name:'サラ',style:'曲者',bluff:5,doubt:.5,push:.3,q:.5,jump:.4},
+];
+const START=10;
+const G={round:0,start:0,pot:0,claim:null,claimer:null,practice:false};
+
+/* ---------- render ---------- */
+function cardEl(v,{back=false,w}={}){
+  const c=document.createElement('div');
+  c.className='card'+(back?' back':v==='x2'?' dbl':v<0?' curse':'');
+  c.textContent=back?'':(v==='x2'?'×2':v);
+  if(w)c.style.setProperty('--w',w+'px');
+  return c;
+}
+function buildSeats(){
+  PLAYERS.forEach((p,i)=>{
+    p.chips=START;
+    if(p.you){p.el=$('me');p.chipsEl=$('mychips');return;}
+    const s=document.createElement('div');s.className='seat';
+    s.innerHTML=`<div class="sname">${p.name}</div><div class="sstyle">${p.style}</div><div class="mini"></div><div class="schips"></div><div class="sact"></div>`;
+    $('bots').appendChild(s);
+    p.el=s;p.mini=s.querySelector('.mini');p.chipsEl=s.querySelector('.schips');p.act=s.querySelector('.sact');
+  });
+}
+function render(turn){
+  PLAYERS.forEach((p,i)=>{
+    p.chipsEl.textContent=`チップ ${p.chips}`;
+    p.el.classList.toggle('turn',turn===i);
+    p.el.classList.toggle('out',!!p.out&&!p.you);
+    p.el.classList.toggle('claimer',G.claimer===i);
+  });
+  $('pot').textContent=G.pot;
+  $('round').textContent=`ROUND ${G.round}`;
+}
+function drawMini(p,show){
+  if(p.you){
+    $('myhand').replaceChildren(...p.hand.map(v=>cardEl(v)));
+    $('mysum').textContent=val(p.hand);
+    return;
+  }
+  p.mini.replaceChildren(...p.hand.map(v=>cardEl(v,{back:!show})));
+}
+function setAct(p,text,cls=''){if(p.you)return;p.act.textContent=text;p.act.className='sact '+cls;}
+function setClaim(){
+  const n=$('claimnum');
+  if(G.claim==null){n.textContent='—';n.classList.add('empty');$('claimwho').textContent='まだ宣言なし';return;}
+  n.textContent=G.claim;n.classList.remove('empty','bump');void n.offsetWidth;n.classList.add('bump');
+  $('claimwho').textContent=`${PLAYERS[G.claimer].name} の宣言`;
+}
+const log=h=>{$('log').innerHTML=h;};
+
+/* ---------- action bar ---------- */
+function setActions(nodes){$('actions').replaceChildren(...nodes);}
+function btn(label,cls,fn,dis){const b=document.createElement('button');b.className='btn '+(cls||'');b.textContent=label;b.disabled=!!dis;b.onclick=fn;return b;}
+function waitMsg(t){const d=document.createElement('div');d.className='wait';d.textContent=t;return d;}
+function tap(label,cls='main'){return new Promise(r=>setActions([btn(label,cls,()=>r())]));}
+function choose(opts){return new Promise(r=>setActions(opts.map(([l,c,v])=>btn(l,c,()=>r(v)))));}
+
+function userTurn(me){
+  return new Promise(res=>{
+    const min=G.claim==null?1:G.claim+1;
+    const cost=v=>G.claim==null?1:v-G.claim;
+    const max=G.claim==null?60:G.claim+me.chips;
+    let v0=Math.max(min,G.claim==null?val([...me.hand,4]):min);
+    const st=document.createElement('div');st.className='stepper';
+    const out=document.createElement('output');
+    const minus=document.createElement('button');minus.textContent='−';minus.setAttribute('aria-label','減らす');
+    const plus=document.createElement('button');plus.textContent='+';plus.setAttribute('aria-label','増やす');
+    v0=Math.min(v0,Math.max(min,max));
+    const cb=btn('','main',()=>res({t:'claim',v:v0}));
+    const upd=()=>{out.textContent=v0;minus.disabled=v0<=min;plus.disabled=v0>=max;cb.textContent=`宣言（${cost(v0)}枚）`;cb.disabled=me.chips<cost(v0);};
+    minus.onclick=()=>{if(v0>min){v0--;upd();}};plus.onclick=()=>{if(v0<max){v0++;upd();}};
+    st.append(minus,out,plus);upd();
+    const items=[st,cb];
+    if(G.claim!=null)items.push(btn('降りる','',()=>res({t:'fold'})));
+    setActions(items);
+  });
+}
+
+/* ---------- buzz window: anyone can call liar ---------- */
+const BUZZ_MS=3200;
+function buzzWindow(ci){
+  return new Promise(res=>{
+    let done=false;const timers=[];
+    const finish=k=>{if(done)return;done=true;timers.forEach(clearTimeout);res(k);};
+    const cands=PLAYERS.map((p,k)=>k).filter(k=>k!==ci&&!PLAYERS[k].out);
+    cands.forEach(k=>{
+      const p=PLAYERS[k];if(p.you)return;
+      const pr=pReach(G.claim,p.hand);
+      if(pr<p.doubt)timers.push(setTimeout(()=>finish(k),Math.min(BUZZ_MS-250,450+pr*3600+Math.random()*900)));
+    });
+    const node=cands.includes(0)
+      ?btn('ライアー！','gold buzzbtn',()=>finish(0))
+      :waitMsg('ライアー受付中…');
+    node.classList.add('buzzing');
+    const bar=document.createElement('i');bar.className='buzzbar';bar.style.animationDuration=BUZZ_MS+'ms';node.appendChild(bar);
+    setActions([node]);
+    timers.push(setTimeout(()=>finish(null),BUZZ_MS));
+  });
+}
+
+/* ---------- bots ---------- */
+async function botTurn(p){
+  await sleep(750);
+  const target=val([...p.hand,4])+Math.random()*p.bluff-1;
+  const min=G.claim==null?1:G.claim+1;
+  if(p.chips<1)return {t:'fold'};
+  if(G.claim==null){
+    return {t:'claim',v:Math.max(1,Math.round(target-2-Math.random()*2))};
+  }
+  if(target>=min){
+    let v=Math.random()<p.jump?Math.max(min,Math.round(target)):min;
+    v=Math.min(v,G.claim+p.chips);
+    return {t:'claim',v};
+  }
+  return {t:'fold'};
+}
+
+/* ---------- liar resolution (slow, step by step) ---------- */
+const T=k=>k; // timing helper (ms)
+function phase(title,sub){
+  const ph=$('phase');ph.classList.remove('in');void ph.offsetWidth;ph.classList.add('in');
+  ph.innerHTML=`<div class="ph-t">${title}</div><div class="ph-s">${sub||''}</div>`;
+}
+async function resolveDoubt(ci,di){
+  const C=PLAYERS[ci],D=PLAYERS[di];
+  const rv=$('reveal');rv.hidden=false;$('claimbox').hidden=true;
+  rv.innerHTML=`<div class="phase" id="phase"></div>
+    <div class="zone" id="dzone" hidden><div class="claimsub">${D.name} の手札（伏せて混ぜた）</div><div class="row" id="drow"></div></div>
+    <div class="zone" id="czone" hidden><div class="claimsub" id="csub">${C.name} の手札＋引いた1枚 ／ 宣言 <b style="color:var(--ver)">${G.claim}</b></div><div class="row" id="crow"></div></div>
+    <div class="verdict" id="verdict"></div>`;
+  setActions([waitMsg('…')]);
+  log('');
+  // 1. call
+  phase('ライアー！',`${D.name} が ${C.name} の「${G.claim} 以上」を嘘だと言った`);
+  await sleep(T(2000));
+  // 2. shuffle
+  const drow=$('drow'),crow=$('crow');
+  const pile=shuffle(D.hand.slice());
+  const dcards=pile.map(v=>{const c=cardEl(v,{back:true});drow.appendChild(c);return c;});
+  $('dzone').hidden=false;
+  phase('シャッフル',`${D.name} が手札を伏せて混ぜる。${D.name} 本人にも、どれが引かれるかわからない`);
+  dcards.forEach((c,k)=>{c.style.animationDelay=(k*.08)+'s';c.classList.add('shuffling');});
+  await sleep(T(1900));
+  dcards.forEach(c=>c.classList.remove('shuffling'));
+  // 3. draw
+  let idx;
+  if(C.you){
+    phase('ドロー','1枚選んで引く');
+    dcards.forEach(c=>c.classList.add('pick'));
+    setActions([waitMsg('引く1枚をタップ')]);
+    idx=await new Promise(r=>dcards.forEach((c,i)=>c.onclick=()=>r(i)));
+    dcards.forEach(c=>{c.classList.remove('pick');c.onclick=null;});
+  }else{
+    phase('ドロー',`${C.name} が1枚引く`);
+    await sleep(T(1300));idx=Math.floor(Math.random()*3);
+  }
+  const drawn=pile[idx],total=val([...C.hand,drawn]),ok=total>=G.claim;
+  dcards[idx].classList.add('drawn');
+  setActions([waitMsg('…')]);
+  await sleep(T(900));
+  // 4. discard
+  phase('捨て札','残りの2枚は、誰も見ずに捨てる');
+  dcards.forEach((c,k)=>{if(k!==idx)c.classList.add('discard');});
+  await sleep(T(1500));
+  // 5. peek
+  $('czone').hidden=false;
+  C.hand.forEach(v=>crow.appendChild(cardEl(v,{back:!C.you})));
+  const pl=document.createElement('span');pl.className='plus';pl.textContent='+';crow.appendChild(pl);
+  const dc=cardEl(drawn,{back:!C.you});dc.classList.add('drawn');crow.appendChild(dc);
+  dcards[idx].classList.add('discard');
+  if(C.you){
+    phase('のぞき見','引いた札は、あなただけが見ている');
+    $('csub').innerHTML=`あなたの合計 <b style="color:var(--bone)">${total}</b> ／ 宣言 <b style="color:var(--ver)">${G.claim}</b>　<b style="color:${ok?'var(--good)':'var(--gold)'}">${ok?'届いている':'届いていない'}</b>`;
+  }else{
+    phase('のぞき見',`${C.name} だけが、引いた札を見ている…`);
+  }
+  // 6. check / fold
+  let dec;
+  if(C.you){
+    dec=await choose([['フォールド','','fold'],['チェック','main','check']]);
+  }else{
+    await sleep(T(2300));dec=(ok||Math.random()<C.push)?'check':'fold';
+  }
+  setActions([waitMsg('…')]);
+  setAct(C,dec==='check'?'チェック':'フォールド',dec==='check'?'claim':'');
+  if(dec==='fold'){
+    phase('フォールド',`${C.name} が諦めた。引いた札は見せない`);
+    await sleep(T(1800));
+    $('dzone').hidden=true;
+    return {winner:di,msg:`${C.name} はフォールド。<b>${D.name}</b> の勝ち。`,hidden:true,total,ok,C};
+  }
+  phase('チェック',`${C.name}：「届いている」`);
+  await sleep(T(1800));
+  // 7. call / drop
+  let resp;
+  if(D.you){
+    phase('受ける？ 引く？','受けて外したら、宣言を超えていた分を払う');
+    resp=await choose([['引く','','drop'],['受ける','gold','call']]);
+  }else{
+    phase('受ける？ 引く？',`${D.name} が迷っている…`);
+    await sleep(T(2200));
+    const pre=pReach(G.claim,D.hand);
+    const post=pre/(pre+(1-pre)*D.q);
+    resp=post<.5?'call':'drop';
+  }
+  setActions([waitMsg('…')]);
+  if(resp==='drop'){
+    setAct(D,'引いた');
+    phase('引く',`${D.name} が引いた。カードは誰にも見せない`);
+    await sleep(T(1800));
+    $('dzone').hidden=true;
+    return {winner:ci,msg:`${D.name} は引いた。<b>${C.name}</b> がポットを取る。`,hidden:true,total,ok,C};
+  }
+  setAct(D,'受ける！','doubt');
+  phase('受ける','オープン！');
+  await sleep(T(1400));
+  // 8. open one by one
+  if(!C.you)$('csub').innerHTML=`${C.name} の手札＋引いた1枚 ／ 宣言 <b style="color:var(--ver)">${G.claim}</b>`;
+  const cs=[...crow.querySelectorAll('.card')];
+  const v=$('verdict');let run=0;
+  for(let k=0;k<3;k++){
+    const c=cardEl(C.hand[k]);c.classList.add('flip');cs[k].replaceWith(c);run=val(C.hand.slice(0,k+1));
+    v.className='verdict';v.textContent=`${run}`;
+    await sleep(T(800));
+  }
+  phase('最後の1枚',`いま ${run}。宣言 ${G.claim} に届くか`);
+  await sleep(T(1600));
+  const last=cardEl(drawn);last.classList.add('flip','drawn');cs[3].replaceWith(last);
+  await sleep(T(500));
+  v.className='verdict '+(ok?'ok':'ng');
+  v.textContent=`合計 ${total} ${ok?'≥':'<'} ${G.claim}　${ok?'宣言成立':'宣言失敗'}`;
+  phase(ok?'成立':'失敗',ok?`${C.name} の勝ち`:`${D.name} の勝ち`);
+  await sleep(T(1200));
+  $('dzone').hidden=true;
+  const winner=ok?ci:di,loser=ok?D:C;
+  const amt=ok?Math.min(total-G.claim,D.chips):Math.min(G.pot,C.chips);
+  let msg=ok
+    ?`<b>${C.name}</b> の勝ち！ ${D.name} は超過分 ${total-G.claim} 枚を払う${amt<total-G.claim?`（手持ち ${amt} 枚まで）`:''}。`
+    :`<b>${D.name}</b> の勝ち！ ${C.name} はポットと同額 ${amt} 枚を払う。`;
+  if(ok&&val([...C.hand,4])<G.claim)msg+=`<br>${D.name} の札が嘘を本当にした。`;
+  return {winner,msg,pay:{from:loser,to:PLAYERS[winner],amt}};
+}
+
+/* ---------- round ---------- */
+async function round(){
+  G.round++;G.pot=0;G.claim=null;G.claimer=null;
+  $('reveal').hidden=true;$('claimbox').hidden=false;
+  PLAYERS.forEach(p=>{if(p.chips<=0){p.chips=START;}});
+  const deck=shuffle(DECK.slice());
+  PLAYERS.forEach(p=>{p.out=false;p.hand=[deck.pop(),deck.pop(),deck.pop()];p.chips--;G.pot++;setAct(p,'');drawMini(p,false);});
+  setClaim();render();
+  const starter=G.start%4;G.start++;
+  log(`ROUND ${G.round}。${PLAYERS[starter].name} から。`);
+  let i=starter,result=null;
+  for(let guard=0;guard<200;guard++){
+    const p=PLAYERS[i];
+    if(!p.out){
+      if(G.claimer===i){result={winner:i,msg:`誰もライアーと言わなかった。<b>${p.name}</b> が手札を見せずに総取り。`};break;}
+      const live=PLAYERS.filter(q=>!q.out);
+      if(live.length===1){result={winner:PLAYERS.indexOf(live[0]),msg:`<b>${live[0].name}</b> 以外が全員降りた。`};break;}
+      render(i);
+      if(!p.you)setActions([waitMsg(`${p.name} が考え中…`)]);
+      let a=p.you?await userTurn(p):await botTurn(p);
+      if(G.claim==null&&a.t!=='claim')a={t:'claim',v:1};
+      if(a.t==='claim'){
+        const cost=G.claim==null?1:a.v-G.claim;p.chips-=cost;G.pot+=cost;G.claim=a.v;G.claimer=i;setAct(p,`宣言 ${a.v}（${cost}枚）`,'claim');setClaim();
+        log(`${p.name}：「${a.v} 以上」　チップ ${cost} 枚<br><span style="color:var(--mute)">ライアー受付中…</span>`);
+        render();
+        const caller=await buzzWindow(i);
+        if(caller!=null){
+          setAct(PLAYERS[caller],'ライアー！','doubt');render();
+          result=await resolveDoubt(i,caller);break;
+        }
+        log(`${p.name}：「${a.v} 以上」　チップ ${cost} 枚`);
+      }else if(a.t==='doubt'){
+        setAct(p,'ライアー！','doubt');render();
+        result=await resolveDoubt(G.claimer,i);break;
+      }else{
+        p.out=true;setAct(p,'降りた');log(`${p.name} は降りた。`);
+      }
+      render();
+    }
+    i=(i+1)%4;
+  }
+  PLAYERS[result.winner].chips+=G.pot;
+  let gain=G.pot;G.pot=0;
+  if(result.pay){result.pay.from.chips-=result.pay.amt;result.pay.to.chips+=result.pay.amt;gain+=result.pay.amt;}
+  if(G.practice)PLAYERS.forEach(p=>drawMini(p,true));
+  render();
+  let extra='';
+  if(G.practice&&result.hidden){
+    extra=`<br><span style="color:var(--mute)">（${result.C.name} の合計は ${result.total}。${result.ok?'本当に届いていた':'ハッタリだった'}）</span>`;
+  }else if(G.practice&&G.claimer!=null&&$('reveal').hidden){
+    const c=PLAYERS[G.claimer];
+    extra=`<br><span style="color:var(--mute)">（${c.name} の手札は合計 ${val(c.hand)}。${val([...c.hand,4])<G.claim?'嘘だった':'ほぼ本当だった'}）</span>`;
+  }
+  log(`${result.msg}（+${gain}）${extra}`);
+  await tap('次のラウンド');
+}
+
+$('openRules').onclick=()=>$('ov').hidden=false;
+let started=false;
+$('closeRules').onclick=async()=>{
+  G.practice=$('practice').checked;$('ov').hidden=true;
+  if(started)return;started=true;
+  buildSeats();
+  while(true)await round();
+};
+</script>
+</body>
+</html>
