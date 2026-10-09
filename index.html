@@ -182,7 +182,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
       <li><div>誰かが「<b>ライアー</b>」と言ったら、その人は手札を伏せて混ぜ、宣言者が1枚引いて<b>自分だけで見る</b>。残りの2枚は見ずに捨てる。届いたと言い張るなら「チェック」、諦めるなら「フォールド」。</div></li>
       <li><div>チェックされたら、ライアーと言った人は「<b>受ける</b>」か「<b>引く</b>」。受けたら公開し、手札3枚＋引いた1枚が宣言以上なら宣言者の勝ち。<b>負けた側はポットと同額を追加で払う</b>。引いたら宣言者がポットを取り、カードは誰にも見せない。</div></li>
     </ol>
-    <p class="deck">カード：1〜9が各4枚、「−5」が2枚、「×2」が2枚（×2は他の札の合計を2倍、2枚なら4倍）。各自3枚、チップ6枚。毎ラウンド参加料1枚。ライアーと言うのは無料。<br>高い札を持ったままライアーと言うと、その札が嘘つきを助けてしまう。</p>
+    <p class="deck">カード：1〜9が各4枚、「−5」が2枚、「×2」が2枚（×2は他の札の合計を2倍、2枚なら4倍）。各自3枚、チップ10枚。毎ラウンド参加料1枚。ライアーと言うのは無料。<br>高い札を持ったままライアーと言うと、その札が嘘つきを助けてしまう。</p>
     <label><input type="checkbox" id="practice"> 練習モード：ラウンド後に全員の手札を見る</label>
     <button class="btn main" id="closeRules">はじめる</button>
   </div>
@@ -207,7 +207,7 @@ const PLAYERS=[
   {name:'レックス',style:'大胆',bluff:7,doubt:.28,push:.45,q:.25,jump:.4},
   {name:'サラ',style:'曲者',bluff:5,doubt:.5,push:.3,q:.5,jump:.4},
 ];
-const START=6;
+const START=10;
 const G={round:0,start:0,pot:0,claim:null,claimer:null,practice:false};
 
 /* ---------- render ---------- */
