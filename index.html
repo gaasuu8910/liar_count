@@ -46,6 +46,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 
 /* cards */
 .card{--w:56px;flex:none;width:var(--w);height:calc(var(--w)*1.36);border-radius:calc(var(--w)*.14);background:var(--bone);color:var(--ink);display:grid;place-items:center;font-family:var(--display);font-size:calc(var(--w)*.52);position:relative;transition:transform .25s}
+.card.dbl{background:#2A2210;color:var(--gold);box-shadow:inset 0 0 0 2px var(--gold);font-size:calc(var(--w)*.42)}
 .card.curse{background:#2A1512;color:var(--ver);box-shadow:inset 0 0 0 2px var(--ver)}
 .card.back{background:repeating-linear-gradient(135deg,#3B2A24 0 4px,#2A1F1B 4px 8px);box-shadow:inset 0 0 0 1.5px #5A463C;color:transparent}
 .card.pick{cursor:pointer;animation:bob 1s ease-in-out infinite}
@@ -164,7 +165,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
     <div class="me-info">
       <div class="me-name">あなた</div>
       <div class="me-sum">手札の合計 <b id="mysum">0</b></div>
-      <div class="me-hint">「あと1枚」の平均はだいたい 4</div>
+      <div class="me-hint">「あと1枚」の平均はだいたい 4。×2は合計を2倍</div>
       <div class="me-chips" id="mychips"></div>
     </div>
   </section>
@@ -176,12 +177,12 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
     <h2>LIAR<span>COUNT</span></h2>
     <p class="lead">ライアーカウント ― 嘘で降ろせ。見破られたら、運と度胸に賭けろ。</p>
     <ol>
-      <li><div>手番では「<b>自分の手札3枚＋あと1枚の合計は○以上</b>」と宣言する。前より大きい数字で、宣言ごとにチップ1枚。宣言しないなら降りる。</div></li>
+      <li><div>手番では「<b>自分の手札3枚＋あと1枚の合計は○以上</b>」と宣言する。前より大きい数字で、<b>上げた数だけチップを払う</b>（最初の宣言は1枚）。宣言しないなら降りる。</div></li>
       <li><div>誰にもライアーと言われず手番が自分まで一周したら、<b>手札を見せずに</b>ポット総取り。</div></li>
       <li><div>誰かが「<b>ライアー</b>」と言ったら、その人は手札を伏せて混ぜ、宣言者が1枚引いて<b>自分だけで見る</b>。残りの2枚は見ずに捨てる。届いたと言い張るなら「チェック」、諦めるなら「フォールド」。</div></li>
       <li><div>チェックされたら、ライアーと言った人は「<b>受ける</b>」か「<b>引く</b>」。受けたら公開し、手札3枚＋引いた1枚が宣言以上なら宣言者の勝ち。<b>負けた側はポットと同額を追加で払う</b>。引いたら宣言者がポットを取り、カードは誰にも見せない。</div></li>
     </ol>
-    <p class="deck">カード：1〜9が各4枚、呪い札「−5」が4枚。各自3枚、チップ6枚。毎ラウンド参加料1枚。ライアーと言うのは無料。<br>高い札を持ったままライアーと言うと、その札が嘘つきを助けてしまう。</p>
+    <p class="deck">カード：1〜9が各4枚、「−5」が2枚、「×2」が2枚（×2は他の札の合計を2倍、2枚なら4倍）。各自3枚、チップ6枚。毎ラウンド参加料1枚。ライアーと言うのは無料。<br>高い札を持ったままライアーと言うと、その札が嘘つきを助けてしまう。</p>
     <label><input type="checkbox" id="practice"> 練習モード：ラウンド後に全員の手札を見る</label>
     <button class="btn main" id="closeRules">はじめる</button>
   </div>
@@ -190,19 +191,21 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 <script>
 const $=id=>document.getElementById(id);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-const DECK=[];for(let v=1;v<=9;v++)for(let k=0;k<4;k++)DECK.push(v);for(let k=0;k<4;k++)DECK.push(-5);
+const DECK=[];for(let v=1;v<=9;v++)for(let k=0;k<4;k++)DECK.push(v);DECK.push(-5,-5,'x2','x2');
+// value of a set of cards: sum of numbers, doubled for each ×2
+const val=cs=>cs.filter(c=>c!=='x2').reduce((a,b)=>a+b,0)*2**cs.filter(c=>c==='x2').length;
 const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
 const sum=a=>a.reduce((x,y)=>x+y,0);
 // distribution of a random 3-card hand total
-const P3={};(()=>{const N=30000;for(let i=0;i<N;i++){const d=shuffle(DECK.slice());const s=d[0]+d[1]+d[2];P3[s]=(P3[s]||0)+1/N;}})();
+const SAMP=[];for(let i=0;i<400;i++){const d=shuffle(DECK.slice());SAMP.push(d.slice(0,3));}
 // chance a claimer reaches C if he draws from `hand`
-function pReach(C,hand){let p=0;for(const s in P3){p+=P3[s]*hand.filter(c=>+s+c>=C).length/hand.length;}return p;}
+function pReach(C,hand){let n=0;for(const x of SAMP)for(const c of hand)if(val([...x,c])>=C)n++;return n/(SAMP.length*hand.length);}
 
 const PLAYERS=[
   {name:'あなた',you:true},
-  {name:'ミナト',style:'慎重派',bluff:2,doubt:.38,push:.1,q:.3},
-  {name:'レックス',style:'大胆',bluff:7,doubt:.28,push:.45,q:.25},
-  {name:'サラ',style:'曲者',bluff:5,doubt:.5,push:.3,q:.5},
+  {name:'ミナト',style:'慎重派',bluff:2,doubt:.38,push:.1,q:.3,jump:.5},
+  {name:'レックス',style:'大胆',bluff:7,doubt:.28,push:.45,q:.25,jump:.4},
+  {name:'サラ',style:'曲者',bluff:5,doubt:.5,push:.3,q:.5,jump:.4},
 ];
 const START=6;
 const G={round:0,start:0,pot:0,claim:null,claimer:null,practice:false};
@@ -210,8 +213,8 @@ const G={round:0,start:0,pot:0,claim:null,claimer:null,practice:false};
 /* ---------- render ---------- */
 function cardEl(v,{back=false,w}={}){
   const c=document.createElement('div');
-  c.className='card'+(back?' back':v<0?' curse':'');
-  c.textContent=back?'':v;
+  c.className='card'+(back?' back':v==='x2'?' dbl':v<0?' curse':'');
+  c.textContent=back?'':(v==='x2'?'×2':v);
   if(w)c.style.setProperty('--w',w+'px');
   return c;
 }
@@ -238,7 +241,7 @@ function render(turn){
 function drawMini(p,show){
   if(p.you){
     $('myhand').replaceChildren(...p.hand.map(v=>cardEl(v)));
-    $('mysum').textContent=sum(p.hand);
+    $('mysum').textContent=val(p.hand);
     return;
   }
   p.mini.replaceChildren(...p.hand.map(v=>cardEl(v,{back:!show})));
@@ -262,16 +265,19 @@ function choose(opts){return new Promise(r=>setActions(opts.map(([l,c,v])=>btn(l
 function userTurn(me){
   return new Promise(res=>{
     const min=G.claim==null?1:G.claim+1;
-    let val=Math.max(min,G.claim==null?sum(me.hand)+4:min);
+    const cost=v=>G.claim==null?1:v-G.claim;
+    const max=G.claim==null?60:G.claim+me.chips;
+    let v0=Math.max(min,G.claim==null?val([...me.hand,4]):min);
     const st=document.createElement('div');st.className='stepper';
     const out=document.createElement('output');
     const minus=document.createElement('button');minus.textContent='−';minus.setAttribute('aria-label','減らす');
     const plus=document.createElement('button');plus.textContent='+';plus.setAttribute('aria-label','増やす');
-    const upd=()=>{out.textContent=val;minus.disabled=val<=min;};
-    minus.onclick=()=>{if(val>min){val--;upd();}};plus.onclick=()=>{if(val<45){val++;upd();}};
+    v0=Math.min(v0,Math.max(min,max));
+    const cb=btn('','main',()=>res({t:'claim',v:v0}));
+    const upd=()=>{out.textContent=v0;minus.disabled=v0<=min;plus.disabled=v0>=max;cb.textContent=`宣言（${cost(v0)}枚）`;cb.disabled=me.chips<cost(v0);};
+    minus.onclick=()=>{if(v0>min){v0--;upd();}};plus.onclick=()=>{if(v0<max){v0++;upd();}};
     st.append(minus,out,plus);upd();
-    const canPay=me.chips>=1;
-    const items=[st,btn('宣言 (1枚)','main',()=>res({t:'claim',v:val}),!canPay)];
+    const items=[st,cb];
     if(G.claim!=null)items.push(btn('ライアー！','gold',()=>res({t:'doubt'})));
     if(G.claim!=null)items.push(btn('降りる','',()=>res({t:'fold'})));
     setActions(items);
@@ -281,20 +287,20 @@ function userTurn(me){
 /* ---------- bots ---------- */
 async function botTurn(p){
   await sleep(750);
-  const S=sum(p.hand);
   if(G.claim!=null){
     const pr=pReach(G.claim,p.hand);
     if(pr<p.doubt)return {t:'doubt'};
   }
-  const target=S+4+Math.random()*p.bluff-1;
+  const target=val([...p.hand,4])+Math.random()*p.bluff-1;
   const min=G.claim==null?1:G.claim+1;
   if(p.chips<1)return {t:'fold'};
   if(G.claim==null){
     return {t:'claim',v:Math.max(1,Math.round(target-2-Math.random()*2))};
   }
   if(target>=min){
-    const jump=Math.random()<.25?Math.floor(Math.random()*3):0;
-    return {t:'claim',v:min+jump};
+    let v=Math.random()<p.jump?Math.max(min,Math.round(target)):min;
+    v=Math.min(v,G.claim+p.chips);
+    return {t:'claim',v};
   }
   return {t:'fold'};
 }
@@ -338,7 +344,7 @@ async function resolveDoubt(ci,di){
     phase('ドロー',`${C.name} が1枚引く`);
     await sleep(T(1300));idx=Math.floor(Math.random()*3);
   }
-  const drawn=pile[idx],total=sum(C.hand)+drawn,ok=total>=G.claim;
+  const drawn=pile[idx],total=val([...C.hand,drawn]),ok=total>=G.claim;
   dcards[idx].classList.add('drawn');
   setActions([waitMsg('…')]);
   await sleep(T(900));
@@ -383,7 +389,7 @@ async function resolveDoubt(ci,di){
   }else{
     phase('受ける？ 引く？',`${D.name} が迷っている…`);
     await sleep(T(2200));
-    let pre=0;for(const c of D.hand){for(const k in P3)if(+k>=G.claim-c)pre+=P3[k]/3;}
+    const pre=pReach(G.claim,D.hand);
     const post=pre/(pre+(1-pre)*D.q);
     resp=post<.5?'call':'drop';
   }
@@ -403,11 +409,11 @@ async function resolveDoubt(ci,di){
   const cs=[...crow.querySelectorAll('.card')];
   const v=$('verdict');let run=0;
   for(let k=0;k<3;k++){
-    const c=cardEl(C.hand[k]);c.classList.add('flip');cs[k].replaceWith(c);run+=C.hand[k];
+    const c=cardEl(C.hand[k]);c.classList.add('flip');cs[k].replaceWith(c);run=val(C.hand.slice(0,k+1));
     v.className='verdict';v.textContent=`${run}`;
     await sleep(T(800));
   }
-  phase('最後の1枚',`あと ${G.claim-run} 以上で宣言成立`);
+  phase('最後の1枚',`いま ${run}。宣言 ${G.claim} に届くか`);
   await sleep(T(1600));
   const last=cardEl(drawn);last.classList.add('flip','drawn');cs[3].replaceWith(last);
   await sleep(T(500));
@@ -419,7 +425,7 @@ async function resolveDoubt(ci,di){
   const winner=ok?ci:di,loser=ok?D:C;
   const amt=Math.min(G.pot,loser.chips);
   let msg=`<b>${PLAYERS[winner].name}</b> の勝ち！ ${loser.name} はさらに ${amt} 枚払う。`;
-  if(ok&&sum(C.hand)+4<G.claim)msg+=`<br>${D.name} の札が嘘を本当にした。`;
+  if(ok&&val([...C.hand,4])<G.claim)msg+=`<br>${D.name} の札が嘘を本当にした。`;
   return {winner,msg,pay:{from:loser,to:PLAYERS[winner],amt}};
 }
 
@@ -445,8 +451,8 @@ async function round(){
       let a=p.you?await userTurn(p):await botTurn(p);
       if(G.claim==null&&a.t!=='claim')a={t:'claim',v:1};
       if(a.t==='claim'){
-        p.chips--;G.pot++;G.claim=a.v;G.claimer=i;setAct(p,`宣言 ${a.v}`,'claim');setClaim();
-        log(`${p.name}：「${a.v} 以上」`);
+        const cost=G.claim==null?1:a.v-G.claim;p.chips-=cost;G.pot+=cost;G.claim=a.v;G.claimer=i;setAct(p,`宣言 ${a.v}（${cost}枚）`,'claim');setClaim();
+        log(`${p.name}：「${a.v} 以上」　チップ ${cost} 枚`);
       }else if(a.t==='doubt'){
         setAct(p,'ライアー！','doubt');render();
         result=await resolveDoubt(G.claimer,i);break;
@@ -467,7 +473,7 @@ async function round(){
     extra=`<br><span style="color:var(--mute)">（${result.C.name} の合計は ${result.total}。${result.ok?'本当に届いていた':'ハッタリだった'}）</span>`;
   }else if(G.practice&&G.claimer!=null&&$('reveal').hidden){
     const c=PLAYERS[G.claimer];
-    extra=`<br><span style="color:var(--mute)">（${c.name} の手札は合計 ${sum(c.hand)}。${sum(c.hand)+4<G.claim?'嘘だった':'ほぼ本当だった'}）</span>`;
+    extra=`<br><span style="color:var(--mute)">（${c.name} の手札は合計 ${val(c.hand)}。${val([...c.hand,4])<G.claim?'嘘だった':'ほぼ本当だった'}）</span>`;
   }
   log(`${result.msg}（+${gain}）${extra}`);
   await tap('次のラウンド');
