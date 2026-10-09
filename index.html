@@ -23,7 +23,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 .app{height:100dvh;max-width:720px;margin:0 auto;display:grid;grid-template-rows:auto auto 1fr auto auto;gap:10px;padding:10px 12px calc(12px + env(safe-area-inset-bottom))}
 
 .top{display:flex;align-items:center;justify-content:space-between}
-.logo{font-family:var(--display);font-size:18px;letter-spacing:.04em}
+.logo{font-family:var(--display);font-size:18px;letter-spacing:.02em}
 .logo span{color:var(--ver)}
 .top-r{display:flex;gap:8px;align-items:center}
 .ghost{background:none;border:1.5px solid var(--line);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:700}
@@ -101,6 +101,10 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 /* actions */
 .actions{display:flex;gap:8px;min-height:58px}
 .actions>*{flex:1}
+.buzzing{position:relative;overflow:hidden}
+.buzzbtn{font-size:20px;font-family:var(--display);font-weight:400}
+.buzzbar{position:absolute;left:0;bottom:0;height:5px;width:100%;background:var(--ver);transform-origin:left;animation:drain linear forwards}
+@keyframes drain{from{transform:scaleX(1)}to{transform:scaleX(0)}}
 .btn{border:0;border-radius:14px;padding:14px 8px;font-weight:900;font-size:15px;background:#2A2724}
 .btn.main{background:var(--ver);color:#fff}
 .btn.gold{background:var(--gold);color:var(--ink)}
@@ -146,7 +150,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 <body>
 <div class="app">
   <header class="top">
-    <div class="logo">LIAR<span>COUNT</span></div>
+    <div class="logo">ライアー<span>カウント</span></div>
     <div class="top-r"><span class="round" id="round"></span><button class="ghost" id="openRules">ルール</button></div>
   </header>
   <section class="bots" id="bots"></section>
@@ -174,12 +178,13 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 
 <div class="ov" id="ov">
   <div class="rules">
-    <h2>LIAR<span>COUNT</span></h2>
-    <p class="lead">ライアーカウント ― 嘘で降ろせ。見破られたら、運と度胸に賭けろ。</p>
+    <h2>ライアー<span>カウント</span></h2>
+    <p class="lead">嘘で降ろせ。見破られたら、運と度胸に賭けろ。</p>
     <ol>
       <li><div>手番では「<b>自分の手札3枚＋あと1枚の合計は○以上</b>」と宣言する。前より大きい数字で、<b>上げた数だけチップを払う</b>（最初の宣言は1枚）。宣言しないなら降りる。</div></li>
+      <li><div>宣言の直後、次の人が動く前なら、<b>誰でも早い者勝ちで「ライアー」</b>と言える（降りた人は除く）。</div></li>
       <li><div>誰にもライアーと言われず手番が自分まで一周したら、<b>手札を見せずに</b>ポット総取り。</div></li>
-      <li><div>誰かが「<b>ライアー</b>」と言ったら、その人は手札を伏せて混ぜ、宣言者が1枚引いて<b>自分だけで見る</b>。残りの2枚は見ずに捨てる。届いたと言い張るなら「チェック」、諦めるなら「フォールド」。</div></li>
+      <li><div>ライアーと言った人は手札を伏せて混ぜ、宣言者が1枚引いて<b>自分だけで見る</b>。残りの2枚は見ずに捨てる。届いたと言い張るなら「チェック」、諦めるなら「フォールド」。</div></li>
       <li><div>チェックされたら、ライアーと言った人は「<b>受ける</b>」か「<b>引く</b>」。受けたら公開し、手札3枚＋引いた1枚が宣言以上なら宣言者の勝ち。負けた側は追加で払う。<b>ライアーが外れたら、宣言を超えていた分</b>を、宣言者が届かなかったら、ポットと同額を。引いたら宣言者がポットを取り、カードは誰にも見せない。</div></li>
     </ol>
     <p class="deck">カード：1〜9が各4枚、「−5」が2枚、「×2」が2枚（×2は他の札の合計を2倍、2枚なら4倍）。各自3枚、チップ10枚。毎ラウンド参加料1枚。ライアーと言うのは無料。<br>高い札を持ったままライアーと言うと、その札が嘘つきを助けてしまう。</p>
@@ -278,19 +283,36 @@ function userTurn(me){
     minus.onclick=()=>{if(v0>min){v0--;upd();}};plus.onclick=()=>{if(v0<max){v0++;upd();}};
     st.append(minus,out,plus);upd();
     const items=[st,cb];
-    if(G.claim!=null)items.push(btn('ライアー！','gold',()=>res({t:'doubt'})));
     if(G.claim!=null)items.push(btn('降りる','',()=>res({t:'fold'})));
     setActions(items);
+  });
+}
+
+/* ---------- buzz window: anyone can call liar ---------- */
+const BUZZ_MS=3200;
+function buzzWindow(ci){
+  return new Promise(res=>{
+    let done=false;const timers=[];
+    const finish=k=>{if(done)return;done=true;timers.forEach(clearTimeout);res(k);};
+    const cands=PLAYERS.map((p,k)=>k).filter(k=>k!==ci&&!PLAYERS[k].out);
+    cands.forEach(k=>{
+      const p=PLAYERS[k];if(p.you)return;
+      const pr=pReach(G.claim,p.hand);
+      if(pr<p.doubt)timers.push(setTimeout(()=>finish(k),Math.min(BUZZ_MS-250,450+pr*3600+Math.random()*900)));
+    });
+    const node=cands.includes(0)
+      ?btn('ライアー！','gold buzzbtn',()=>finish(0))
+      :waitMsg('ライアー受付中…');
+    node.classList.add('buzzing');
+    const bar=document.createElement('i');bar.className='buzzbar';bar.style.animationDuration=BUZZ_MS+'ms';node.appendChild(bar);
+    setActions([node]);
+    timers.push(setTimeout(()=>finish(null),BUZZ_MS));
   });
 }
 
 /* ---------- bots ---------- */
 async function botTurn(p){
   await sleep(750);
-  if(G.claim!=null){
-    const pr=pReach(G.claim,p.hand);
-    if(pr<p.doubt)return {t:'doubt'};
-  }
   const target=val([...p.hand,4])+Math.random()*p.bluff-1;
   const min=G.claim==null?1:G.claim+1;
   if(p.chips<1)return {t:'fold'};
@@ -454,6 +476,13 @@ async function round(){
       if(G.claim==null&&a.t!=='claim')a={t:'claim',v:1};
       if(a.t==='claim'){
         const cost=G.claim==null?1:a.v-G.claim;p.chips-=cost;G.pot+=cost;G.claim=a.v;G.claimer=i;setAct(p,`宣言 ${a.v}（${cost}枚）`,'claim');setClaim();
+        log(`${p.name}：「${a.v} 以上」　チップ ${cost} 枚<br><span style="color:var(--mute)">ライアー受付中…</span>`);
+        render();
+        const caller=await buzzWindow(i);
+        if(caller!=null){
+          setAct(PLAYERS[caller],'ライアー！','doubt');render();
+          result=await resolveDoubt(i,caller);break;
+        }
         log(`${p.name}：「${a.v} 以上」　チップ ${cost} 枚`);
       }else if(a.t==='doubt'){
         setAct(p,'ライアー！','doubt');render();
